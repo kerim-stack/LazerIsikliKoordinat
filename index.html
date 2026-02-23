@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lazer Işıklı Koordinat Düzlemi</title>
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <aside id="sidebar">
+            <h2><i class="fa-solid fa-laser"></i> Koordinat Düzlemi</h2>
+            
+            <h3>Modlar</h3>
+            <div class="mode-selector">
+                <button id="mode-free" class="active"><i class="fa-solid fa-compass-drafting"></i> Serbest Mod</button>
+                <button id="mode-app1" onclick="window.location.href='uygulama1.html'"><i class="fa-solid fa-book-open"></i> Uygulama 1</button>
+                <button id="mode-app2" onclick="window.location.href='uygulama2.html'"><i class="fa-solid fa-pencil-ruler"></i> Uygulama 2</button>
+                <button id="mode-app3" onclick="window.location.href='uygulama3.html'"><i class="fa-solid fa-pencil-ruler"></i> Uygulama 3</button>
+                <button id="mode-app4" onclick="window.location.href='uygulama4.html'"><i class="fa-solid fa-pencil-ruler"></i> Uygulama 4</button>
+            </div>
+            
+            <hr>
+
+            <div id="tools-panel">
+                <h3>Nesneler</h3>
+                <button id="tool-move"><i class="fa-solid fa-arrow-pointer"></i> Seç / Taşı</button>
+                <button id="tool-laser"><i class="fa-solid fa-wand-magic-sparkles"></i> Lazer Ekle</button>
+                <button id="tool-point"><i class="fa-solid fa-circle-dot"></i> Nokta Ekle</button>
+                
+                <h3>Çizim</h3>
+                <button id="tool-line"><i class="fa-solid fa-pen-nib"></i> Doğru Çiz</button>
+                <button id="tool-direction"><i class="fa-solid fa-ruler-horizontal"></i> Doğrultu Çiz</button>
+                <button id="tool-circle"><i class="fa-solid fa-circle-notch"></i> Çember Çiz</button>
+                <button id="tool-polygon"><i class="fa-solid fa-draw-polygon"></i> Çokgen Oluştur</button>
+                <button id="tool-parabola"><i class="fa-solid fa-bezier-curve"></i> Parabol Çiz</button>
+                <button id="tool-unit-circle"><i class="fa-solid fa-ring"></i> Birim Çember</button>
+                
+                <h3>Düzenleme</h3>
+                <button id="tool-delete"><i class="fa-solid fa-trash-can"></i> Sil</button>
+                <button id="tool-clear"><i class="fa-solid fa-eraser"></i> Temizle</button>
+            </div>
+            
+            <div id="info-panel">
+                <p id="cursor-pos">x: 0, y: 0</p>
+                <div id="selection-info"></div>
+            </div>
+        </aside>
+        
+        <main id="canvas-container">
+            <svg id="mainSvg" xmlns="http://www.w3.org/2000/svg">
+                <!-- Izgara ve Eksenler -->
+                <g id="grid-layer"></g>
+                <!-- Nesneler -->
+                <g id="objects-layer"></g>
+                <!-- Seçim ve Düzenleme Katmanı -->
+                <g id="ui-layer"></g>
+            </svg>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
