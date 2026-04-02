@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Uygulama 4</title>
     <!-- Font Awesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -34,21 +34,14 @@
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
-            height: 100vh;
-            overflow: hidden;
-            display: flex;
+            min-height: 100vh;
+            overflow-y: auto;
+            display: block;
         }
 
         /* Sidebar Styling */
         #sidebar {
-            width: var(--sidebar-width);
-            background: var(--card-bg);
-            border-right: 1px solid rgba(0,0,0,0.05);
-            display: flex;
-            flex-direction: column;
-            padding: 24px;
-            z-index: 10;
-            box-shadow: 4px 0 24px rgba(0,0,0,0.02);
+            display: none;
         }
 
         .brand {
@@ -119,8 +112,6 @@
 
         /* Main Content Area */
         #content-area {
-            flex: 1;
-            overflow-y: auto;
             padding: 40px;
             scroll-behavior: smooth;
         }
@@ -720,9 +711,64 @@
             70% { box-shadow: 0 0 0 10px rgba(67, 97, 238, 0); }
             100% { box-shadow: 0 0 0 0 rgba(67, 97, 238, 0); }
         }
+
+        /* Portrait Rotation Overlay */
+        #portrait-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            background: linear-gradient(135deg, #4361ee 0%, #3f37c9 100%);
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+            padding: 40px;
+        }
+        #portrait-overlay .rotate-icon {
+            width: 100px; height: 100px; margin-bottom: 30px;
+            animation: rotatePhone 2s ease-in-out infinite;
+        }
+        #portrait-overlay .rotate-icon svg { width: 100%; height: 100%; fill: white; }
+        #portrait-overlay h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 12px; color: white; }
+        #portrait-overlay p { font-size: 1rem; opacity: 0.85; max-width: 300px; line-height: 1.6; }
+        @keyframes rotatePhone {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-30deg); }
+            75% { transform: rotate(90deg); }
+        }
+        @media (orientation: portrait) and (max-width: 1024px) {
+            #portrait-overlay { display: flex !important; }
+            #content-area, #sidebar { display: none !important; }
+        }
+        @media (orientation: landscape), (min-width: 1025px) {
+            #portrait-overlay { display: none !important; }
+        }
+
+        /* Touch-friendly targets */
+        @media (pointer: coarse) {
+            .nav-btn { min-height: 44px; }
+            svg { touch-action: none; }
+            .handle { stroke-width: 28px; }
+            .handle-hit-area { pointer-events: all !important; }
+            .point { stroke-width: 14px; }
+            .polygon-vertex { stroke-width: 14px; }
+        }
     </style>
 </head>
 <body>
+    <!-- Portrait Mode Overlay -->
+    <div id="portrait-overlay">
+        <div class="rotate-icon">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M16.48 2.52c3.27 1.55 5.61 4.72 5.97 8.48h1.5C23.44 4.84 18.29 0 12 0l-.66.03 3.81 3.81 1.33-1.32zm-6.25-.77c-.59-.59-1.54-.59-2.12 0L1.75 8.11c-.59.59-.59 1.54 0 2.12l12.02 12.02c.59.59 1.54.59 2.12 0l6.36-6.36c.59-.59.59-1.54 0-2.12L10.23 1.75zm4.6 19.44L2.81 9.17l6.36-6.36 12.02 12.02-6.36 6.36zm-7.31.29C4.25 19.94 1.91 16.76 1.55 13H.05C.56 19.16 5.71 24 12 24l.66-.03-3.81-3.81-1.33 1.32z"/>
+            </svg>
+        </div>
+        <h2>Cihazınızı Çevirin</h2>
+        <p>Bu uygulama yatay modda çalışmaktadır. Lütfen cihazınızı yatay konuma getirin.</p>
+    </div>
+
     <!-- Sidebar Navigation -->
     <aside id="sidebar">
         <div class="brand">
@@ -731,14 +777,8 @@
         </div>
         
         <div id="lesson-nav">
-            <button class="nav-btn" onclick="showSection(1)" id="btn-section-1">
+            <button class="nav-btn active" onclick="showSection(1)" id="btn-section-1">
                 <i class="fas fa-book-open"></i> 1. Temel Bilgiler
-            </button>
-            <button class="nav-btn active" onclick="showSection(2)" id="btn-section-2">
-                <i class="fas fa-pencil-ruler"></i> 2. Uygulama
-            </button>
-            <button class="nav-btn" onclick="showSection(3)" id="btn-section-3">
-                <i class="fas fa-clipboard-check"></i> 3. Değerlendirme
             </button>
         </div>
 
@@ -750,84 +790,108 @@
     <!-- Main Content -->
     <main id="content-area">
         <div class="container">
-            <div id="section-1" class="section-content" style="display: none;">
+            <div id="section-1" class="section-content">
             <header>
-                <h1>Uygulama 4</h1>
-                <p class="subtitle">Bu bölüm henüz hazırlanmadı.</p>
+                <h1>Derinleştirme</h1>
+                <p class="subtitle">Bu materyalle başka neler yapılabilir?</p>
             </header>
-            </div>
 
-            <div id="section-2" class="section-content">
-            <section class="card" id="uygulama-4">
-                <h2><i class="fas fa-pencil-ruler"></i> 2. Uygulama</h2>
-                <p>Bu bölümde araç panelini kullanarak çizimler yapabilirsiniz.</p>
+            <section class="card">
+                <h2><i class="fas fa-lightbulb"></i> Serbest Modu Keşfedin</h2>
+                <p>
+                    Şimdiye kadar öğrendiklerinizi pekiştirmek ve yeni keşifler yapmak için <strong>Serbest Mod</strong>'u kullanabilirsiniz. 
+                    Ana sayfadaki serbest mod, size sınırsız bir çalışma alanı sunar. Aşağıda, bu materyalle keşfedebileceğiniz bazı ilgi çekici problemler yer almaktadır.
+                </p>
+            </section>
 
-                <div class="lab-shell">
-                    <div class="lab-panel">
-                        <div id="tools-panel">
-                            <h3>Nesneler</h3>
-                            <button id="tool-move"><i class="fas fa-arrow-pointer"></i> Seç / Taşı</button>
-                            <button id="tool-laser"><i class="fas fa-wand-magic-sparkles"></i> Lazer Ekle</button>
-                            <button id="tool-point"><i class="fas fa-circle-dot"></i> Nokta Ekle</button>
-
-                            <h3>Çizim</h3>
-                            <button id="tool-line"><i class="fas fa-pen-nib"></i> Doğru Çiz</button>
-                            <button id="tool-direction"><i class="fas fa-ruler-horizontal"></i> Doğrultu Çiz</button>
-                            <button id="tool-circle"><i class="fas fa-circle-notch"></i> Çember Çiz</button>
-                            <button id="tool-polygon"><i class="fas fa-draw-polygon"></i> Çokgen Oluştur</button>
-                            <button id="tool-parabola"><i class="fas fa-bezier-curve"></i> Parabol Çiz</button>
-                            <button id="tool-unit-circle"><i class="fas fa-ring"></i> Birim Çember</button>
-
-                            <h3>Düzenleme</h3>
-                            <button id="tool-delete"><i class="fas fa-trash-can"></i> Sil</button>
-                            <button id="tool-clear"><i class="fas fa-eraser"></i> Temizle</button>
+            <section class="card">
+                <h2><i class="fas fa-ruler-combined"></i> Doğruların Eğim İlişkileri</h2>
+                <p>
+                    Serbest modda birden fazla doğru çizerek aralarındaki eğim ilişkilerini inceleyebilirsiniz:
+                </p>
+                <div class="task-grid">
+                    <div class="task-card">
+                        <div class="task-header">
+                            <span class="task-title"><i class="fas fa-arrows-alt-h" style="color:var(--primary-color)"></i> Paralel Doğrular</span>
                         </div>
-
-                        <div id="info-panel">
-                            <p id="cursor-pos">x: 0, y: 0</p>
-                            <div id="selection-info"></div>
-                        </div>
+                        <ul class="task-steps">
+                            <li>İki doğru çizin ve eğimlerinin eşit olduğunu gözlemleyin.</li>
+                            <li>Lazer ışığını paralel doğrulara göndererek yansıma açılarını karşılaştırın.</li>
+                        </ul>
                     </div>
-
-                    <main id="canvas-container">
-                        <svg id="mainSvg" xmlns="http://www.w3.org/2000/svg">
-                            <g id="grid-layer"></g>
-                            <g id="objects-layer"></g>
-                            <g id="ui-layer"></g>
-                        </svg>
-                    </main>
+                    <div class="task-card">
+                        <div class="task-header">
+                            <span class="task-title"><i class="fas fa-plus" style="color:var(--accent-color)"></i> Dik Kesişen Doğrular</span>
+                        </div>
+                        <ul class="task-steps">
+                            <li>Birbirine dik iki doğru çizin (eğimlerin çarpımı −1).</li>
+                            <li>Lazer ile kesişim noktasındaki 90°'lik açıyı doğrulayın.</li>
+                        </ul>
+                    </div>
+                    <div class="task-card">
+                        <div class="task-header">
+                            <span class="task-title"><i class="fas fa-layer-group" style="color:var(--success-color)"></i> Çakışık Doğrular</span>
+                        </div>
+                        <ul class="task-steps">
+                            <li>Aynı denkleme sahip iki doğru çizerek üst üste binmelerini gözlemleyin.</li>
+                            <li>Eğim ve y-kesim noktasının eşit olduğunu doğrulayın.</li>
+                        </ul>
+                    </div>
                 </div>
+            </section>
+
+            <section class="card">
+                <h2><i class="fas fa-draw-polygon"></i> Açıortay Kesişimi</h2>
+                <p>
+                    Bir üçgenin iç açıortaylarının tek bir noktada (iç teğet çemberin merkezi) kesiştiğini materyalimizle keşfedebilirsiniz:
+                </p>
+                <ul class="steps-list">
+                    <li>Serbest modda <strong>Çokgen Oluştur</strong> aracıyla bir üçgen çizin.</li>
+                    <li>Her bir köşeden karşı kenara doğru <strong>Doğru Çiz</strong> aracını kullanarak açıortayları çizin. Lazer ışıklarının yansıma açılarından yararlanarak açıyı ikiye bölen doğruyu bulabilirsiniz.</li>
+                    <li>Üç açıortayın tek bir noktada kesiştiğini gözlemleyin. Bu, üçgenin <strong>iç teğet çemberinin merkezi</strong>dir.</li>
+                </ul>
+            </section>
+
+            <section class="card concept-box">
+                <h3><i class="fas fa-graduation-cap"></i> Disiplinler Arası Kullanım</h3>
+                <p>
+                    Bu materyal yalnızca matematik dersinde değil, farklı disiplinlerde de kullanılabilir:
+                </p>
+                <div class="comparison-grid" style="margin-top:16px">
+                    <div class="comparison-item" style="background:rgba(255,255,255,0.15); border-color:rgba(255,255,255,0.2)">
+                        <h4 style="color:white; margin-bottom:8px"><i class="fas fa-atom"></i> Fizik</h4>
+                        <p style="color:rgba(255,255,255,0.9); font-size:0.95rem; margin-bottom:0">
+                            <strong>Eğim</strong> kavramı hız-zaman grafiklerinde ivmeyi temsil eder. <strong>Kuvvet vektörleri</strong>ni koordinat düzleminde göstererek bileşke kuvveti bulabilirsiniz. Lazer yansımalarıyla <strong>yansıma ve kırılma yasalarını</strong> deneyimleyebilirsiniz.
+                        </p>
+                    </div>
+                    <div class="comparison-item" style="background:rgba(255,255,255,0.15); border-color:rgba(255,255,255,0.2)">
+                        <h4 style="color:white; margin-bottom:8px"><i class="fas fa-globe-americas"></i> Coğrafya</h4>
+                        <p style="color:rgba(255,255,255,0.9); font-size:0.95rem; margin-bottom:0">
+                            Güneş ışınlarının yeryüzüne <strong>geliş açısı</strong>nı lazer ışınıyla modelleyebilirsiniz. Farklı enlemlerde ışınların eğiminin nasıl değiştiğini gözlemleyerek mevsimler ve iklim kuşakları konularını somutlaştırabilirsiniz.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card" style="text-align:center">
+                <h2><i class="fas fa-rocket"></i> Hadi Başlayalım!</h2>
+                <p>Yukarıdaki fikirleri denemek veya kendi problemlerinizi oluşturmak için serbest moda geçin.</p>
+                <a href="index.html" class="btn-primary" style="margin-top:8px">
+                    <i class="fas fa-compass-drafting"></i> Serbest Moda Git
+                </a>
             </section>
             </div>
 
-            <div id="section-3" class="section-content" style="display: none;">
-                <header>
-                    <h1>Değerlendirme</h1>
-                    <p class="subtitle">Bu bölüm henüz hazırlanmadı.</p>
-                </header>
-            </div>
+
         </div>
     </main>
-    <script src="script.js"></script>
     <script>
         function showSection(sectionId) {
-            // Hide all sections
             document.querySelectorAll('.section-content').forEach(el => el.style.display = 'none');
-            
-            // Show selected section
             document.getElementById('section-' + sectionId).style.display = 'block';
-            
-            // Update sidebar buttons
             document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById('btn-section-' + sectionId).classList.add('active');
-            
-            // Scroll to top
             document.getElementById('content-area').scrollTop = 0;
-
-            // If switching to Section 2 (Application), update SVG dimensions
-            if (sectionId === 2) {
-                if (typeof updateViewBox === 'function') setTimeout(updateViewBox, 50);
-            }
         }
     </script>
 </body>

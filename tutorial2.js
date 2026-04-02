@@ -13,17 +13,27 @@ class Tutorial2Manager {
         this.progressBar = document.getElementById('tutorial-progress-bar');
         this.questionArea = document.getElementById('tutorial-question-area');
         
+        // Vertex label overlay layer
+        this.tutorialLabelsLayer = document.getElementById('tutorial-vertex-labels');
+        this.activeVertexTargets = null;
+
         // Bind events
         if(this.nextBtn) this.nextBtn.addEventListener('click', () => this.nextStep());
         
-        // Listen for canvas interactions to validate steps
-        window.addEventListener('mouseup', () => this.validateCurrentStep());
-        window.addEventListener('touchend', () => this.validateCurrentStep());
+        // Listen for canvas interactions to validate steps and update vertex labels
+        window.addEventListener('mouseup', () => { this.validateCurrentStep(); this.updateVertexLabels(); });
+        window.addEventListener('touchend', () => { this.validateCurrentStep(); this.updateVertexLabels(); });
         
         // Listen for tool changes
         document.querySelectorAll('#tools-panel button').forEach(btn => {
             btn.addEventListener('click', () => setTimeout(() => this.validateCurrentStep(), 100));
         });
+
+        // Clear vertex labels when canvas is cleared
+        const clearBtn = document.getElementById('tool-clear');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => this.clearVertexLabels());
+        }
 
         // Show container
         if (this.container) {
@@ -46,6 +56,11 @@ class Tutorial2Manager {
                 id: 'acute-draw',
                 text: "İlk göreviniz: <strong>'Çokgen Oluştur'</strong> aracını kullanarak şu koordinatlara sahip bir üçgen çizin:<br><strong>A(-4, -4)</strong>, <strong>B(6, -4)</strong>, <strong>C(1, 6)</strong><br><em>(Noktaları sırayla tıklayın ve şekli kapatmak için başladığınız noktaya tekrar tıklayın.)</em>",
                 type: 'action',
+                vertexTargets: [
+                    { svgX: -4, svgY:  4, label: 'A', offX: -0.8, offY:  0.8 },
+                    { svgX:  6, svgY:  4, label: 'B', offX:  0.8, offY:  0.8 },
+                    { svgX:  1, svgY: -6, label: 'C', offX:  0.4, offY: -0.8 }
+                ],
                 validate: () => {
                     const poly = state.objects.find(o => o.type === 'polygon');
                     if (!poly) return false;
@@ -175,6 +190,11 @@ class Tutorial2Manager {
                 id: 'right-draw',
                 text: "<strong>'Çokgen Oluştur'</strong> aracını kullanarak şu noktalardan geçen bir üçgen oluşturun:<br><strong>D(-6, -2)</strong>, <strong>E(4, -2)</strong>, <strong>F(-6, 6)</strong>",
                 type: 'action',
+                vertexTargets: [
+                    { svgX: -6, svgY:  2, label: 'D', offX: -0.8, offY:  0.0 },
+                    { svgX:  4, svgY:  2, label: 'E', offX:  0.8, offY:  0.7 },
+                    { svgX: -6, svgY: -6, label: 'F', offX: -0.8, offY: -0.7 }
+                ],
                 validate: () => {
                     const poly = state.objects.find(o => o.type === 'polygon');
                     if (!poly) return false;
@@ -252,7 +272,7 @@ class Tutorial2Manager {
                     });
                     
                     if (eLaserWrongDirection) {
-                        this.showFeedback("E noktasındaki (4, -2) lazer D noktasına (-6, -2) bakmalı!", "error");
+                        this.showFeedback("Lazerler, karşılarındaki kenara dik olacak şekilde ayarlanmalı!", "error");
                         return false;
                     }
                     
@@ -290,6 +310,11 @@ class Tutorial2Manager {
                 id: 'obtuse-draw',
                 text: "<strong>'Çokgen Oluştur'</strong> aracını kullanarak şu noktalardan geçen bir üçgen oluşturun:<br><strong>G(-2, -2)</strong>, <strong>H(4, -2)</strong>, <strong>K(-4, 4)</strong>",
                 type: 'action',
+                vertexTargets: [
+                    { svgX: -2, svgY:  2, label: 'G', offX:  0.0, offY:  0.8 },
+                    { svgX:  4, svgY:  2, label: 'H', offX:  0.8, offY:  0.7 },
+                    { svgX: -4, svgY: -4, label: 'K', offX: -0.8, offY: -0.7 }
+                ],
                 validate: () => {
                     const poly = state.objects.find(o => o.type === 'polygon');
                     if (!poly) return false;
@@ -541,12 +566,17 @@ class Tutorial2Manager {
     }
 
     validateCurrentStep() {
+        if (!this.isActive) return;
         const step = this.steps[this.currentStepIndex];
         if (step.type !== 'action') return;
 
         const isValid = step.validate();
         
         if (isValid) {
+            // Persist vertex targets so labels survive beyond the draw step
+            if (step.vertexTargets) {
+                this.activeVertexTargets = step.vertexTargets;
+            }
             this.showFeedback(step.feedback, "success");
             this.nextBtn.style.display = 'block';
             this.nextBtn.disabled = false;
@@ -594,15 +624,74 @@ class Tutorial2Manager {
         if (this.currentStepIndex < this.steps.length - 1) {
             this.currentStepIndex++;
             this.renderStep();
+        } else {
+            // Last step (finish) – navigate to Section 3 (Quiz)
+            if (typeof showSection === 'function') {
+                showSection(3);
+            }
         }
     }
     
     clearCanvas() {
+        this.clearVertexLabels();
         if (typeof state !== 'undefined') {
             state.objects = [];
             state.directionRays = [];
             if (typeof renderObjects === 'function') renderObjects();
             else if (typeof render === 'function') render();
+        }
+    }
+
+    clearVertexLabels() {
+        this.activeVertexTargets = null;
+        if (this.tutorialLabelsLayer) this.tutorialLabelsLayer.innerHTML = '';
+    }
+
+    updateVertexLabels() {
+        if (!this.tutorialLabelsLayer) return;
+        const step = this.steps[this.currentStepIndex];
+
+        // Use current step's targets (while drawing) or persisted active targets (after draw)
+        const targets = (step && step.vertexTargets) ? step.vertexTargets : this.activeVertexTargets;
+        if (!targets) {
+            this.tutorialLabelsLayer.innerHTML = '';
+            return;
+        }
+
+        // Gather all placed points: completed polygon + in-progress tempObject
+        let allPoints = [];
+        if (typeof state !== 'undefined') {
+            const poly = state.objects.find(o => o.type === 'polygon');
+            if (poly) allPoints = [...poly.points];
+            if (state.tempObject && state.tempObject.type === 'polygon') {
+                allPoints = [...allPoints, ...state.tempObject.points];
+            }
+        }
+
+        this.tutorialLabelsLayer.innerHTML = '';
+        const SVG_NS = 'http://www.w3.org/2000/svg';
+        const fontSize = (typeof state !== 'undefined' && state.viewWidth) ? state.viewWidth * 0.042 : 0.75;
+
+        for (const vt of targets) {
+            const matched = allPoints.some(p => Math.hypot(p.x - vt.svgX, p.y - vt.svgY) < 0.6);
+            if (!matched) continue;
+
+            const lx = vt.svgX + (vt.offX !== undefined ? vt.offX : 0.3);
+            const ly = vt.svgY + (vt.offY !== undefined ? vt.offY : -0.5);
+
+            const text = document.createElementNS(SVG_NS, 'text');
+            text.setAttribute('x', lx);
+            text.setAttribute('y', ly);
+            text.setAttribute('font-size', fontSize);
+            text.setAttribute('font-weight', 'bold');
+            text.setAttribute('fill', '#d35400');
+            text.setAttribute('stroke', 'white');
+            text.setAttribute('stroke-width', '0.18');
+            text.setAttribute('paint-order', 'stroke');
+            text.setAttribute('text-anchor', 'middle');
+            text.setAttribute('pointer-events', 'none');
+            text.textContent = vt.label;
+            this.tutorialLabelsLayer.appendChild(text);
         }
     }
 }

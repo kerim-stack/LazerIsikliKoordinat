@@ -1,8 +1,8 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Uygulama 3</title>
     <!-- Font Awesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -47,8 +47,68 @@
             display: flex;
             flex-direction: column;
             padding: 24px;
-            z-index: 10;
-            box-shadow: 4px 0 24px rgba(0,0,0,0.02);
+            z-index: 100;
+            box-shadow: 4px 0 24px rgba(0,0,0,0.15);
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            transform: translateX(calc(-1 * var(--sidebar-width)));
+            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        #sidebar.open {
+            transform: translateX(0);
+        }
+
+        #sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.3);
+            z-index: 99;
+        }
+
+        #sidebar-overlay.visible {
+            display: block;
+        }
+
+        #hamburger-btn {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 101;
+            background: white;
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 10px;
+            width: 42px;
+            height: 42px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+        }
+
+        #hamburger-btn span {
+            display: block;
+            width: 20px;
+            height: 2px;
+            background: var(--text-color);
+            border-radius: 2px;
+            transition: all 0.2s;
+        }
+
+        #hamburger-btn:hover {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        #hamburger-btn:hover span {
+            background: white;
         }
 
         .brand {
@@ -121,13 +181,14 @@
         #content-area {
             flex: 1;
             overflow-y: auto;
-            padding: 40px;
+            padding: 70px 16px 40px;
             scroll-behavior: smooth;
+            width: 100%;
         }
 
         .container {
-            max-width: 900px;
-            margin: 0 auto;
+            max-width: 100%;
+            margin: 0;
             padding-bottom: 60px;
         }
 
@@ -694,6 +755,14 @@
             color: #721c24;
         }
 
+        #tutorial-btn-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin-top: 16px;
+        }
+
         #tutorial-next-btn {
             background: var(--primary-color);
             color: white;
@@ -702,8 +771,6 @@
             border-radius: 8px;
             font-weight: 600;
             cursor: pointer;
-            margin-top: 16px;
-            float: right;
         }
         
         #tutorial-next-btn:disabled {
@@ -720,9 +787,324 @@
             70% { box-shadow: 0 0 0 10px rgba(67, 97, 238, 0); }
             100% { box-shadow: 0 0 0 0 rgba(67, 97, 238, 0); }
         }
+
+        /* Quiz 3 Styles */
+        #quiz3-container {
+            background: #fff;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            margin-bottom: 24px;
+            border-left: 5px solid var(--accent-color);
+            position: relative;
+            overflow: hidden;
+        }
+
+        #quiz3-progress-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 4px;
+            background: var(--success-color);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        #quiz3-instruction {
+            font-size: 1.1rem;
+            margin-bottom: 16px;
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        #quiz3-btn-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        #quiz3-next-btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        #quiz3-next-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* Click-to-Order */
+        .click-order-container {
+            margin-top: 16px;
+        }
+
+        .sort-direction {
+            font-weight: 600;
+            color: var(--text-light);
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+        }
+
+        .order-slots {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .order-slot {
+            flex: 1;
+            min-width: 90px;
+            padding: 10px 8px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            text-align: center;
+            background: white;
+            transition: border-color 0.2s, background-color 0.3s;
+        }
+
+        .order-slot.empty {
+            background: #f8f9fa;
+            border-style: dashed;
+        }
+
+        .slot-rank {
+            display: block;
+            font-weight: 700;
+            font-size: 0.8rem;
+            color: var(--primary-color);
+            margin-bottom: 4px;
+        }
+
+        .slot-value {
+            display: block;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text-color);
+        }
+
+        .order-slot.empty .slot-value {
+            color: var(--text-light);
+        }
+
+        .order-values {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .order-value-btn {
+            padding: 10px 16px;
+            border: 2px solid var(--primary-color);
+            background: white;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--primary-color);
+            transition: all 0.2s;
+        }
+
+        .order-value-btn:hover:not(:disabled) {
+            background: rgba(67, 97, 238, 0.08);
+            transform: translateY(-2px);
+            box-shadow: 0 3px 8px rgba(67, 97, 238, 0.2);
+        }
+
+        .order-value-btn.selected {
+            background: #e8e8e8;
+            border-color: #ccc;
+            color: #999;
+            cursor: default;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .angle-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            background: rgba(67,97,238,0.1);
+            color: var(--primary-color);
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            color: var(--primary-color);
+            padding: 12px 22px;
+            border-radius: 12px;
+            border: 2px solid var(--primary-color);
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(67,97,238,0.05);
+        }
+
+        /* Portrait Rotation Overlay */
+        #portrait-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            background: linear-gradient(135deg, #4361ee 0%, #3f37c9 100%);
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+            padding: 40px;
+        }
+        #portrait-overlay .rotate-icon {
+            width: 100px; height: 100px; margin-bottom: 30px;
+            animation: rotatePhone 2s ease-in-out infinite;
+        }
+        #portrait-overlay .rotate-icon svg { width: 100%; height: 100%; fill: white; }
+        #portrait-overlay h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 12px; color: white; }
+        #portrait-overlay p { font-size: 1rem; opacity: 0.85; max-width: 300px; line-height: 1.6; }
+        @keyframes rotatePhone {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-30deg); }
+            75% { transform: rotate(90deg); }
+        }
+        @media (orientation: portrait) and (max-width: 1024px) {
+            #portrait-overlay { display: flex !important; }
+            #content-area, #sidebar, #hamburger-btn, #sidebar-overlay { display: none !important; }
+        }
+        @media (orientation: landscape), (min-width: 1025px) {
+            #portrait-overlay { display: none !important; }
+        }
+
+        /* Touch-friendly targets */
+        @media (pointer: coarse) {
+            .nav-btn { min-height: 44px; }
+            #hamburger-btn { min-width: 44px; min-height: 44px; }
+            svg { touch-action: none; }
+            .handle { stroke-width: 28px; }
+            .handle-hit-area { pointer-events: all !important; }
+            .point { stroke-width: 14px; }
+            .polygon-vertex { stroke-width: 14px; }
+        }
+
+        /* Responsive lab layout — tablets in landscape */
+        @media (max-width: 1024px) {
+            .lab-shell {
+                grid-template-columns: 200px 1fr;
+                gap: 12px;
+                padding: 12px;
+            }
+            .lab-panel {
+                min-height: auto;
+                padding: 12px;
+            }
+            #canvas-container {
+                min-height: 400px;
+            }
+            #tools-panel button {
+                padding: 7px 10px;
+                font-size: 0.85rem;
+                margin-bottom: 4px;
+                gap: 8px;
+            }
+            #tools-panel h3 {
+                margin: 8px 0 4px;
+                font-size: 0.72rem;
+            }
+            .card {
+                padding: 20px;
+            }
+            #content-area {
+                padding-top: 54px;
+            }
+        }
+
+        /* Responsive lab layout — phones in landscape */
+        @media (max-width: 850px) {
+            .lab-shell {
+                grid-template-columns: 150px 1fr;
+                gap: 8px;
+                padding: 8px;
+                margin-top: 12px;
+            }
+            .lab-panel {
+                padding: 8px;
+            }
+            #canvas-container {
+                min-height: 300px;
+            }
+            #tools-panel button {
+                padding: 5px 7px;
+                font-size: 0.78rem;
+                margin-bottom: 3px;
+                gap: 5px;
+                border-radius: 7px;
+            }
+            #tools-panel h3 {
+                margin: 6px 0 3px;
+                font-size: 0.65rem;
+            }
+            .card {
+                padding: 14px;
+                margin-bottom: 16px;
+            }
+            .card h2 {
+                font-size: 1.1rem;
+                margin-bottom: 10px;
+            }
+            .card p {
+                font-size: 0.92rem;
+                margin-bottom: 8px;
+            }
+            #content-area {
+                padding: 48px 8px 20px;
+            }
+        }
+
+        /* Short viewport — phone landscape height */
+        @media (max-height: 500px) {
+            .lab-panel, #canvas-container {
+                min-height: auto;
+            }
+            .lab-shell {
+                min-height: calc(100vh - 160px);
+            }
+            #canvas-container {
+                min-height: calc(100vh - 200px);
+            }
+        }
     </style>
 </head>
 <body>
+    <!-- Portrait Mode Overlay -->
+    <div id="portrait-overlay">
+        <div class="rotate-icon">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M16.48 2.52c3.27 1.55 5.61 4.72 5.97 8.48h1.5C23.44 4.84 18.29 0 12 0l-.66.03 3.81 3.81 1.33-1.32zm-6.25-.77c-.59-.59-1.54-.59-2.12 0L1.75 8.11c-.59.59-.59 1.54 0 2.12l12.02 12.02c.59.59 1.54.59 2.12 0l6.36-6.36c.59-.59.59-1.54 0-2.12L10.23 1.75zm4.6 19.44L2.81 9.17l6.36-6.36 12.02 12.02-6.36 6.36zm-7.31.29C4.25 19.94 1.91 16.76 1.55 13H.05C.56 19.16 5.71 24 12 24l.66-.03-3.81-3.81-1.33 1.32z"/>
+            </svg>
+        </div>
+        <h2>Cihazınızı Çevirin</h2>
+        <p>Bu uygulama yatay modda çalışmaktadır. Lütfen cihazınızı yatay konuma getirin.</p>
+    </div>
+
+    <div id="sidebar-overlay" onclick="toggleSidebar()"></div>
+    <button id="hamburger-btn" onclick="toggleSidebar()" aria-label="Menüyü Aç/Kapat">
+        <span></span><span></span><span></span>
+    </button>
     <!-- Sidebar Navigation -->
     <aside id="sidebar">
         <div class="brand">
@@ -731,10 +1113,10 @@
         </div>
         
         <div id="lesson-nav">
-            <button class="nav-btn" onclick="showSection(1)" id="btn-section-1">
+            <button class="nav-btn active" onclick="showSection(1)" id="btn-section-1">
                 <i class="fas fa-book-open"></i> 1. Temel Bilgiler
             </button>
-            <button class="nav-btn active" onclick="showSection(2)" id="btn-section-2">
+            <button class="nav-btn" onclick="showSection(2)" id="btn-section-2">
                 <i class="fas fa-pencil-ruler"></i> 2. Uygulama
             </button>
             <button class="nav-btn" onclick="showSection(3)" id="btn-section-3">
@@ -750,18 +1132,412 @@
     <!-- Main Content -->
     <main id="content-area">
         <div class="container">
-            <div id="section-1" class="section-content" style="display: none;">
-            <header>
-                <h1>Uygulama 3</h1>
-                <p class="subtitle">Bu bölüm henüz hazırlanmadı.</p>
-            </header>
+            <div id="section-1" class="section-content">
+                <header>
+                    <h1>Trigonometrik Fonksiyonlar</h1>
+                    <p class="subtitle">Birim çember üzerinde sin, cos, tan ve cot kavramları</p>
+                </header>
+
+                <!-- KART 1: BİRİM ÇEMBER -->
+                <section class="card">
+                    <h2><i class="fas fa-circle-notch"></i> Birim Çember</h2>
+                    <p>
+                        <strong>Birim çember</strong>; merkezi koordinat sisteminin orijininde (0, 0) ve yarıçapı <strong>r = 1</strong> olan çemberdir.
+                        Üzerindeki herhangi bir <strong>P</strong> noktası, başlangıç ışını ile yapan <strong>α</strong> açısına göre benzersiz biçimde belirlenir.
+                    </p>
+                    <p>
+                        Bu noktanın <strong>x koordinatı cos α</strong>, <strong>y koordinatı ise sin α</strong> olarak tanımlanır.
+                        Yani <strong>P = (cos α , sin α)</strong>.
+                    </p>
+
+                    <!-- SVG: sin ve cos diagramı -->
+                    <div class="visual-demo">
+                        <svg viewBox="0 0 340 300" xmlns="http://www.w3.org/2000/svg" style="max-width:400px;">
+                            <defs>
+                                <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto-start-reverse">
+                                    <path d="M0,0 L0,6 L8,3 z" fill="#2c3e50"/>
+                                </marker>
+                            </defs>
+
+                            <!-- Eksenler: 4 ucunda ok -->
+                            <!-- x ekseni: soldan sağa -->
+                            <line x1="18" y1="155" x2="316" y2="155" stroke="#2c3e50" stroke-width="1.6"
+                                  marker-start="url(#arr)" marker-end="url(#arr)"/>
+                            <!-- y ekseni: aşağıdan yukarıya -->
+                            <line x1="155" y1="282" x2="155" y2="18" stroke="#2c3e50" stroke-width="1.6"
+                                  marker-start="url(#arr)" marker-end="url(#arr)"/>
+
+                            <!-- Eksen etiketleri -->
+                            <text x="320" y="159" font-size="14" fill="#2c3e50" font-weight="bold" dominant-baseline="middle">x</text>
+                            <text x="155" y="9" font-size="14" fill="#2c3e50" font-weight="bold" text-anchor="middle">y</text>
+
+                            <!-- Birim çember (r=100, merkez 155,155) -->
+                            <circle cx="155" cy="155" r="100" fill="rgba(67,97,238,0.06)" stroke="#4361ee" stroke-width="2"/>
+
+                            <!-- Eksen işaretleri ve etiketleri -- dışarı konumlandırılmış -->
+                            <!-- x=1 → piksel 255,155 -->
+                            <line x1="255" y1="149" x2="255" y2="161" stroke="#555" stroke-width="1.2"/>
+                            <text x="261" y="170" text-anchor="start" font-size="11" fill="#555">1</text>
+                            <!-- x=-1 → piksel 55,155 -->
+                            <line x1="55" y1="149" x2="55" y2="161" stroke="#555" stroke-width="1.2"/>
+                            <text x="49" y="170" text-anchor="end" font-size="11" fill="#555">−1</text>
+                            <!-- y=1 → piksel 155,55 -->
+                            <line x1="149" y1="55" x2="161" y2="55" stroke="#555" stroke-width="1.2"/>
+                            <text x="148" y="51" text-anchor="end" font-size="11" fill="#555" dominant-baseline="middle">1</text>
+                            <!-- y=-1 → piksel 155,255 -->
+                            <line x1="149" y1="255" x2="161" y2="255" stroke="#555" stroke-width="1.2"/>
+                            <text x="148" y="261" text-anchor="end" font-size="11" fill="#555" dominant-baseline="middle">−1</text>
+
+                            <!-- O (orijin) etiketi: 3. bölge, eksenlere yakın ama çakışmayan -->  
+                            <text x="148" y="170" text-anchor="end" font-size="12" fill="#2c3e50" font-weight="700">O</text>
+
+                            <!-- P noktası: α≈40°, px = 155+100*cos40 ≈ 232, py = 155-100*sin40 ≈ 91 -->
+                            <!-- Dik üçgen köşeleri: O(155,155), A(232,155), P(232,91) -->
+
+                            <!-- Hipotenüs OΡ (r=1) -->
+                            <line x1="155" y1="155" x2="232" y2="91" stroke="#4361ee" stroke-width="2.2"/>
+
+                            <!-- Yatay kenar OA: cos α -->
+                            <line x1="155" y1="155" x2="232" y2="155" stroke="#e74c3c" stroke-width="2" stroke-dasharray="6 3"/>
+
+                            <!-- Dikey kenar AP: sin α -->
+                            <line x1="232" y1="155" x2="232" y2="91" stroke="#2ecc71" stroke-width="2" stroke-dasharray="6 3"/>
+
+                            <!-- Dik açı karesi: A(232,155) köşesinde, 8×8 piksel -->
+                            <rect x="224" y="147" width="8" height="8" fill="none" stroke="#555" stroke-width="1.2"/>
+                            <!-- Dik açı ortasında nokta -->
+                            <circle cx="228" cy="151" r="1.5" fill="#555"/>
+
+                            <!-- α açı yayı: orijinden, x ekseninden P yönüne -->
+                            <!-- r=28, 0° den 40°'e CCW (SVG'de negatif y = yukarı = açı negatif yönde) -->
+                            <path d="M 183 155 A 28 28 0 0 0 176.4 136.6" fill="none" stroke="#f39c12" stroke-width="2"/>
+                            <!-- α etiketi: açı yayının dışına, (183+8, 155-18) civarına -->
+                            <text x="192" y="146" font-size="13" fill="#f39c12" font-weight="bold" text-anchor="middle">α</text>
+
+                            <!-- P noktası -->
+                            <circle cx="232" cy="91" r="4.5" fill="#4361ee"/>
+
+                            <!-- P etiketi -->
+                            <text x="237" y="86" font-size="12" fill="#4361ee" font-weight="bold">P(cos α, sin α)</text>
+
+                            <!-- cos α etiketi: yatay kenar ortası, altında -->
+                            <text x="193" y="169" text-anchor="middle" font-size="12" fill="#e74c3c" font-weight="700">cos α</text>
+
+                            <!-- sin α etiketi: dikey kenar ortası, sağında -->
+                            <text x="235" y="126" text-anchor="start" font-size="12" fill="#27ae60" font-weight="700">sin α</text>
+
+                            <!-- 1 etiketi: hipotenüs ortası -->
+                            <text x="186" y="116" text-anchor="middle" font-size="12" fill="#4361ee" font-style="italic"
+                                  transform="rotate(-40, 186, 116)">1</text>
+                        </svg>
+                        <p class="demo-caption">Birim çember üzerinde P noktası ve trigonometrik oranlar</p>
+                    </div>
+
+                    <div class="comparison-grid" style="grid-template-columns: 1fr 1fr; gap:16px; margin-top:20px;">
+                        <div class="comparison-item">
+                            <div style="font-size:1.8rem; margin-bottom:8px;">📐</div>
+                            <div style="font-weight:700; font-size:1.1rem; color:#4361ee;">cos α</div>
+                            <div style="font-size:0.95rem; color:#555; margin-top:6px;">
+                                P noktasının <strong>x ekseni üzerindeki</strong> iz düşümü<br>
+                                <span style="color:#e74c3c">Yatay bileşen</span>
+                            </div>
+                        </div>
+                        <div class="comparison-item">
+                            <div style="font-size:1.8rem; margin-bottom:8px;">📏</div>
+                            <div style="font-weight:700; font-size:1.1rem; color:#27ae60;">sin α</div>
+                            <div style="font-size:0.95rem; color:#555; margin-top:6px;">
+                                P noktasının <strong>y ekseni üzerindeki</strong> iz düşümü<br>
+                                <span style="color:#2ecc71">Dikey bileşen</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- KART 2: sin ve cos ARALIĞI -->
+                <section class="card" style="border-left:5px solid #2ecc71; padding-left:28px;">
+                    <h2><i class="fas fa-arrows-left-right"></i> sin ve cos Neden [−1, 1] Aralığında?</h2>
+                    <p>
+                        Birim çemberdeki her P noktası, aynı zamanda orijin merkezli ve yarıçapı 1 olan çember üzerindedir.
+                        Bu nedenle P'nin x ve y koordinatları hiçbir zaman 1'i aşamaz veya −1'in altına düşemez.
+                    </p>
+                    <p>
+                        Başka bir deyişle:
+                    </p>
+                    <div style="background:#f8faff; border-radius:12px; padding:18px 24px; margin:16px 0; font-size:1.15rem; text-align:center; border:1px solid #dbeafe;">
+                        <span style="color:#e74c3c; font-weight:700;">-1 ≤ cos α ≤ 1</span>
+                        &nbsp;&nbsp;&nbsp;&nbsp;
+                        <span style="color:#27ae60; font-weight:700;">-1 ≤ sin α ≤ 1</span>
+                    </div>
+                    <p>
+                        cos α = −1 ve cos α = 1 değerleri, P noktası sırasıyla (−1, 0) ve (1, 0) noktalarında olduğunda elde edilir.
+                        sin α = −1 ve sin α = 1 için ise P sırasıyla (0, −1) ve (0, 1) noktalarındadır.
+                    </p>
+                </section>
+
+                <!-- KART 3: Pisagor Özdeşliği -->
+                <div class="concept-box" style="margin-bottom:30px;">
+                    <h3><i class="fas fa-infinity"></i> Pisagor Özdeşliği</h3>
+                    <p style="font-size:1.05rem; line-height:1.8;">
+                        P’nin birim çember üzerindeki dik üçgenıne Pisagor teoremini uygularsak:
+                    </p>
+                    <div style="background:rgba(255,255,255,0.18); border-radius:12px; padding:20px; margin:18px 0; text-align:center; font-size:1.35rem; font-weight:700; letter-spacing:0.5px;">
+                        (cos α)² + (sin α)² = 1²  ⟹  <strong>cos²α + sin²α = 1</strong>
+                    </div>
+                    <p style="font-size:0.98rem; opacity:0.9;">
+                        Bu eşitlik tüm gerçel α değerlerı için geçerlidir. Dik üçgenin iki dik kenarı cos α ve sin α, hipotenüs ise 
+                        birim çemberin yarıçapı olan <strong>1</strong>'dir.
+                    </p>
+                </div>
+
+                <!-- KART 4: tan EKSENİ -->
+                <section class="card">
+                    <h2><i class="fas fa-ruler-vertical"></i> tan Fonksiyonu ve Tan Ekseni</h2>
+                    <p>
+                        <strong>tan α</strong>, orijinden geçen ve α açısını yapan ışının, <strong>x = 1</strong> doğrusu üzerinde kestiği noktanın y koordinatı olarak tanımlanır.
+                        Bu dik doğru, birim çembere (1, 0) noktasında teğettir ve <strong>tan ekseni</strong> olarak adlandırılır.
+                    </p>
+                    <p>
+                        Tanımdan:
+                        &nbsp;<strong>tan α = sin α / cos α</strong>&nbsp;
+                        (cos α ≠ 0 koşuluyla). cos α = 0 olduğunda tan ekseniyle kesişme olmaz; tan fonksiyonu bu noktalarda tanımsızdır.
+                    </p>
+
+                    <div class="visual-demo">
+                        <svg viewBox="-20 0 320 280" xmlns="http://www.w3.org/2000/svg" style="max-width:360px;">
+                            <defs>
+                                <marker id="arrT" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto-start-reverse">
+                                    <path d="M0,0 L0,6 L8,3 z" fill="#2c3e50"/>
+                                </marker>
+                            </defs>
+
+                            <!-- Eksenler 4 ok -- merkez (110,155), r=90 -->
+                            <line x1="-15" y1="155" x2="278" y2="155" stroke="#2c3e50" stroke-width="1.6"
+                                  marker-start="url(#arrT)" marker-end="url(#arrT)"/>
+                            <line x1="110" y1="268" x2="110" y2="12" stroke="#2c3e50" stroke-width="1.6"
+                                  marker-start="url(#arrT)" marker-end="url(#arrT)"/>
+
+                            <!-- Eksen etiketleri -->
+                            <text x="282" y="159" font-size="13" fill="#2c3e50" font-weight="bold" dominant-baseline="middle">x</text>
+                            <text x="110" y="5" font-size="13" fill="#2c3e50" font-weight="bold" text-anchor="middle">y</text>
+
+                            <!-- Birim çember: merkez(110,155), r=90 -->
+                            <circle cx="110" cy="155" r="90" fill="rgba(67,97,238,0.05)" stroke="#4361ee" stroke-width="1.8"/>
+
+                            <!-- Eksen işaretleri ve ±1 etiketleri -->
+                            <!-- x=1 → piksel (200,155) -->
+                            <line x1="200" y1="149" x2="200" y2="161" stroke="#555" stroke-width="1.2"/>
+                            <text x="207" y="170" text-anchor="start" font-size="11" fill="#555">1</text>
+                            <!-- x=-1 → piksel (20,155) -->
+                            <line x1="20" y1="149" x2="20" y2="161" stroke="#555" stroke-width="1.2"/>
+                            <text x="13" y="170" text-anchor="end" font-size="11" fill="#555">−1</text>
+                            <!-- y=1 → piksel (110,65) -->
+                            <line x1="104" y1="65" x2="116" y2="65" stroke="#555" stroke-width="1.2"/>
+                            <text x="102" y="62" text-anchor="end" font-size="11" fill="#555" dominant-baseline="middle">1</text>
+                            <!-- y=-1 → piksel (110,245) -->
+                            <line x1="104" y1="245" x2="116" y2="245" stroke="#555" stroke-width="1.2"/>
+                            <text x="102" y="253" text-anchor="end" font-size="11" fill="#555" dominant-baseline="middle">−1</text>
+
+                            <!-- tan ekseni: x=1 dikey çizgi, piksel x=200 -->
+                            <line x1="200" y1="20" x2="200" y2="265" stroke="#e67e22" stroke-width="2" stroke-dasharray="6 4"/>
+                            <text x="204" y="270" font-size="10" fill="#e67e22" font-weight="700">tan ekseni (x = 1)</text>
+
+                            <!-- α=40°: P = (110+90cos40, 155-90sin40) = (110+68.9, 155-57.9) = (178.9, 97.1) -->
+                            <!-- Işın: O → T (T tan ekseni üzerinde, x=200) -->
+                            <!-- Işın yönü: (200-110, 155-97.1) uzatılmış: T'nin tam koordinatı hesapla -->
+                            <!-- Line OT: y-155 = (97.1-155)/(178.9-110) * (x-110) = -57.9/68.9*(x-110) -->
+                            <!-- x=200: y = 155 + (-57.9/68.9)*90 = 155 - 75.6 = 79.4 -->
+                            <line x1="110" y1="155" x2="208" y2="73" stroke="#888" stroke-width="1.4" stroke-dasharray="4 3"/>
+
+                            <!-- P noktası birim çember üzerinde -->
+                            <circle cx="178.9" cy="97.1" r="4" fill="#4361ee"/>
+                            <text x="162" y="100" font-size="11" fill="#4361ee" font-weight="700">P</text>
+
+                            <!-- T noktası tan ekseni üzerinde (200, 79.4) -->
+                            <circle cx="200" cy="79.4" r="4" fill="#e67e22"/>
+                            <text x="205" y="77" font-size="11" fill="#e67e22" font-weight="700">T</text>
+
+                            <!-- tan uzunluğu: (200,155) → (200,79.4) -->
+                            <line x1="200" y1="155" x2="200" y2="79.4" stroke="#e67e22" stroke-width="3"/>
+
+                            <!-- Dik açı karesi: (200,155) köşesinde, tan ekseni ile x ekseni -->
+                            <rect x="192" y="147" width="8" height="8" fill="none" stroke="#555" stroke-width="1.2"/>
+                            <!-- Dik açı ortasında nokta -->
+                            <circle cx="196" cy="151" r="1.5" fill="#555"/>
+
+                            <!-- tan etiketi -->
+                            <text x="218" y="119" text-anchor="start" font-size="12" fill="#e67e22" font-weight="700">tan α</text>
+
+                            <!-- α açı yayı: orijin (110,155), x ekseninden P yönüne, r=26 -->
+                            <path d="M 136 155 A 26 26 0 0 0 129.9 138.3" fill="none" stroke="#f39c12" stroke-width="2"/>
+                            <!-- α etiketi: açının dışında, açık alanda -->
+                            <text x="143" y="142" font-size="13" fill="#f39c12" font-weight="bold">α</text>
+
+                            <!-- O (orijin) etiketi: 3. bölge -->
+                            <text x="103" y="170" text-anchor="end" font-size="12" fill="#2c3e50" font-weight="700">O</text>
+                        </svg>
+                        <p class="demo-caption">tan α : T noktasının tan ekseni üzerindeki uzunluğu</p>
+                    </div>
+                </section>
+
+                <!-- KART 5: cot EKSENİ -->
+                <section class="card">
+                    <h2><i class="fas fa-ruler-horizontal"></i> cot Fonksiyonu ve Cot Ekseni</h2>
+                    <p>
+                        <strong>cot α</strong>, orijinden geçen ışının <strong>y = 1</strong> doğrusu üzerinde kestiği noktanın x koordinatı olarak tanımlanır.
+                        Bu yatay doğru, birim çembere (0, 1) noktasında teğettir ve <strong>cot ekseni</strong> olarak adlandırılır.
+                    </p>
+                    <p>
+                        Tanımdan:
+                        &nbsp;<strong>cot α = cos α / sin α</strong>&nbsp;
+                        (sin α ≠ 0 koşuluyla). sin α = 0 olduğunda cot fonksiyonu tanımsızdır.
+                    </p>
+
+                    <div class="visual-demo">
+                        <svg viewBox="-25 0 350 305" xmlns="http://www.w3.org/2000/svg" style="max-width:380px;">
+                            <defs>
+                                <marker id="arrC" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto-start-reverse">
+                                    <path d="M0,0 L0,6 L8,3 z" fill="#2c3e50"/>
+                                </marker>
+                            </defs>
+
+                            <!-- Eksenler 4 ok -- merkez (100,175), r=90 -->
+                            <line x1="-20" y1="175" x2="308" y2="175" stroke="#2c3e50" stroke-width="1.6"
+                                  marker-start="url(#arrC)" marker-end="url(#arrC)"/>
+                            <line x1="100" y1="298" x2="100" y2="12" stroke="#2c3e50" stroke-width="1.6"
+                                  marker-start="url(#arrC)" marker-end="url(#arrC)"/>
+
+                            <!-- Eksen etiketleri -->
+                            <text x="312" y="179" font-size="13" fill="#2c3e50" font-weight="bold" dominant-baseline="middle">x</text>
+                            <text x="100" y="5" font-size="13" fill="#2c3e50" font-weight="bold" text-anchor="middle">y</text>
+
+                            <!-- Birim çember: merkez(100,175), r=90 -->
+                            <circle cx="100" cy="175" r="90" fill="rgba(67,97,238,0.05)" stroke="#4361ee" stroke-width="1.8"/>
+
+                            <!-- y=1 ekseni işareti (piksel 100,85) -->
+                            <line x1="94" y1="85" x2="106" y2="85" stroke="#555" stroke-width="1.2"/>
+                            <text x="97" y="91" text-anchor="end" font-size="11" fill="#555" dominant-baseline="middle">1</text>
+                            <!-- x=1 → piksel (190,175) -->
+                            <line x1="190" y1="169" x2="190" y2="181" stroke="#555" stroke-width="1.2"/>
+                            <text x="196" y="190" text-anchor="start" font-size="11" fill="#555">1</text>
+                            <!-- x=-1 → piksel (10,175) -->
+                            <line x1="10" y1="169" x2="10" y2="181" stroke="#555" stroke-width="1.2"/>
+                            <text x="4" y="190" text-anchor="end" font-size="11" fill="#555">−1</text>
+                            <!-- y=-1 → piksel (100,265) -->
+                            <line x1="94" y1="265" x2="106" y2="265" stroke="#555" stroke-width="1.2"/>
+                            <text x="93" y="273" text-anchor="end" font-size="11" fill="#555" dominant-baseline="middle">−1</text>
+
+                            <!-- cot ekseni: y=1 yatay çizgi, piksel y=85 -->
+                            <line x1="15" y1="85" x2="305" y2="85" stroke="#9b59b6" stroke-width="2" stroke-dasharray="6 4"/>
+                            <text x="18" y="80" font-size="10" fill="#9b59b6" font-weight="700">cot ekseni (y = 1)</text>
+
+                            <!-- α=40°: P = (100+90cos40, 175-90sin40) = (168.9, 117.1) -->
+                            <!-- Işın O→C: C cot ekseninde (y=85 piksel) -->
+                            <!-- Line OC: x-100 = (168.9-100)/(117.1-175)*(y-175) = 68.9/(-57.9)*(y-175) -->
+                            <!-- y=85: x = 100 + (68.9/57.9)*90 = 100 + 107.1 ≈ 207 -->
+                            <line x1="100" y1="175" x2="215" y2="78" stroke="#888" stroke-width="1.4" stroke-dasharray="4 3"/>
+
+                            <!-- P noktası birim çember üzerinde -->
+                            <circle cx="168.9" cy="117.1" r="4" fill="#4361ee"/>
+                            <text x="168" y="113" font-size="11" fill="#4361ee" font-weight="700">P</text>
+
+                            <!-- C noktası cot ekseni üzerinde (207,85) -->
+                            <circle cx="207" cy="85" r="4" fill="#9b59b6"/>
+                            <text x="212" y="82" font-size="11" fill="#9b59b6" font-weight="700">C</text>
+
+                            <!-- cot uzunluğu: (100,85) → (207,85) -->
+                            <line x1="100" y1="85" x2="207" y2="85" stroke="#9b59b6" stroke-width="3"/>
+
+                            <!-- Dik açı karesi: (100,85) köşesinde, cot ekseni ile y ekseni -->
+                            <rect x="100" y="85" width="8" height="8" fill="none" stroke="#555" stroke-width="1.2"/>
+                            <!-- Dik açı ortasında nokta -->
+                            <circle cx="104" cy="89" r="1.5" fill="#555"/>
+
+                            <!-- cot etiketi: kenar ortası, üstünde -->
+                            <text x="153" y="74" text-anchor="middle" font-size="12" fill="#9b59b6" font-weight="700">cot α</text>
+
+                            <!-- α açı yayı: orijin (100,175), x ekseninden P yönüne, r=26 -->
+                            <path d="M 126 175 A 26 26 0 0 0 119.9 158.3" fill="none" stroke="#f39c12" stroke-width="2"/>
+                            <!-- α etiketi: açık alanda -->
+                            <text x="133" y="162" font-size="13" fill="#f39c12" font-weight="bold">α</text>
+
+                            <!-- O (orijin) etiketi: 3. bölge -->
+                            <text x="93" y="190" text-anchor="end" font-size="12" fill="#2c3e50" font-weight="700">O</text>
+                        </svg>
+                        <p class="demo-caption">cot α : C noktasının cot ekseni üzerindeki uzunluğu</p>
+                    </div>
+                </section>
+
+                <!-- Özet grid -->
+                <section class="card">
+                    <h2><i class="fas fa-table"></i> Özet: Dört Trigonometrik Fonksiyon</h2>
+                    <div class="comparison-grid" style="grid-template-columns: repeat(2, 1fr); gap:16px;">
+                        <div class="comparison-item">
+                            <div style="font-size:1.5rem; font-weight:800; color:#e74c3c;">cos α</div>
+                            <div style="margin-top:8px; font-size:0.95rem; color:#555;">P'nin <strong>x koordinatı</strong></div>
+                            <div style="margin-top:6px; background:#fef0f0; border-radius:8px; padding:6px 10px; font-size:0.92rem; color:#c0392b;">Aralık: [−1, 1]</div>
+                        </div>
+                        <div class="comparison-item">
+                            <div style="font-size:1.5rem; font-weight:800; color:#27ae60;">sin α</div>
+                            <div style="margin-top:8px; font-size:0.95rem; color:#555;">P'nin <strong>y koordinatı</strong></div>
+                            <div style="margin-top:6px; background:#f0fef4; border-radius:8px; padding:6px 10px; font-size:0.92rem; color:#1e8449;">Aralık: [−1, 1]</div>
+                        </div>
+                        <div class="comparison-item">
+                            <div style="font-size:1.5rem; font-weight:800; color:#e67e22;">tan α</div>
+                            <div style="margin-top:8px; font-size:0.95rem; color:#555;"><strong>sin α / cos α</strong><br><span style="color:#888; font-size:0.88rem;">Tan ekseni (x = 1) üzerindeki uzunluk</span></div>
+                            <div style="margin-top:6px; background:#fef6ec; border-radius:8px; padding:6px 10px; font-size:0.92rem; color:#b7770d;">cos α ≠ 0 koşuluyla tanımlı</div>
+                        </div>
+                        <div class="comparison-item">
+                            <div style="font-size:1.5rem; font-weight:800; color:#9b59b6;">cot α</div>
+                            <div style="margin-top:8px; font-size:0.95rem; color:#555;"><strong>cos α / sin α</strong><br><span style="color:#888; font-size:0.88rem;">Cot ekseni (y = 1) üzerindeki uzunluk</span></div>
+                            <div style="margin-top:6px; background:#f9f0ff; border-radius:8px; padding:6px 10px; font-size:0.92rem; color:#7d3c98;">sin α ≠ 0 koşuluyla tanımlı</div>
+                        </div>
+                    </div>
+                </section>
+
+                <div style="text-align: center; margin-top: 40px; padding-bottom: 20px;">
+                    <button class="btn-primary" onclick="showSection(2)">
+                        <i class="fas fa-arrow-right"></i> Şimdi Uygula
+                    </button>
+                </div>
             </div>
 
-            <div id="section-2" class="section-content">
+            <div id="section-2" class="section-content" style="display: none;">
             <section class="card" id="uygulama-3">
                 <h2><i class="fas fa-pencil-ruler"></i> 2. Uygulama</h2>
+
+                <!-- Tutorial Overlay -->
+                <div id="tutorial-container">
+                    <div id="tutorial-progress-bar"></div>
+                    <div id="tutorial-instruction">Yükleniyor...</div>
+                    <div id="tutorial-question-area"></div>
+                    <div id="tutorial-feedback" class="tutorial-feedback"></div>
+                    <div id="tutorial-btn-row">
+                        <button id="tutorial-next-btn" style="display: none;">Devam Et <i class="fas fa-arrow-right"></i></button>
+                    </div>
+                </div>
+
                 <p>Bu bölümde araç panelini kullanarak çizimler yapabilirsiniz.</p>
 
+            </section>
+            </div>
+
+            <div id="section-3" class="section-content" style="display: none;">
+                <section class="card">
+                    <h2><i class="fas fa-clipboard-check"></i> 3. Değerlendirme</h2>
+
+                    <div id="quiz3-container">
+                        <div id="quiz3-progress-bar"></div>
+                        <div id="quiz3-instruction">Yükleniyor...</div>
+                        <div id="quiz3-question-area"></div>
+                        <div id="quiz3-feedback" class="tutorial-feedback"></div>
+                        <div id="quiz3-btn-row">
+                            <button id="quiz3-next-btn" style="display: none;">Devam Et <i class="fas fa-arrow-right"></i></button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <div id="lab-shell-wrapper" style="display: none;">
                 <div class="lab-shell">
                     <div class="lab-panel">
                         <div id="tools-panel">
@@ -783,34 +1559,42 @@
                             <button id="tool-clear"><i class="fas fa-eraser"></i> Temizle</button>
                         </div>
 
-                        <div id="info-panel">
-                            <p id="cursor-pos">x: 0, y: 0</p>
-                            <div id="selection-info"></div>
-                        </div>
                     </div>
 
                     <main id="canvas-container">
                         <svg id="mainSvg" xmlns="http://www.w3.org/2000/svg">
                             <g id="grid-layer"></g>
                             <g id="objects-layer"></g>
+                            <g id="tutorial-axes-layer"></g>
+                            <g id="tutorial-overlay-layer"></g>
                             <g id="ui-layer"></g>
                         </svg>
                     </main>
                 </div>
-            </section>
-            </div>
-
-            <div id="section-3" class="section-content" style="display: none;">
-                <header>
-                    <h1>Değerlendirme</h1>
-                    <p class="subtitle">Bu bölüm henüz hazırlanmadı.</p>
-                </header>
             </div>
         </div>
     </main>
     <script src="script.js"></script>
+    <script src="tutorial3.js"></script>
+    <script src="quiz3.js"></script>
     <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            window.tutorial3 = null;
+            window.quiz3 = null;
+        });
+
         function showSection(sectionId) {
+            // Deactivate quiz3 overlay loop when leaving section 3
+            if (window.quiz3 && sectionId !== 3) {
+                window.quiz3.deactivate();
+            }
+            // Stop tutorial3 animations when leaving section 2
+            if (window.tutorial3 && sectionId !== 2) {
+                window.tutorial3.stopAnimation();
+                window.tutorial3.clearOverlays();
+                window.tutorial3.clearAxes();
+            }
+
             // Hide all sections
             document.querySelectorAll('.section-content').forEach(el => el.style.display = 'none');
             
@@ -824,10 +1608,36 @@
             // Scroll to top
             document.getElementById('content-area').scrollTop = 0;
 
-            // If switching to Section 2 (Application), update SVG dimensions
+            // Show/hide shared lab shell
+            const labWrapper = document.getElementById('lab-shell-wrapper');
+
             if (sectionId === 2) {
+                labWrapper.style.display = 'block';
                 if (typeof updateViewBox === 'function') setTimeout(updateViewBox, 50);
+                if (!window.tutorial3) {
+                    setTimeout(() => {
+                        window.tutorial3 = new Tutorial3Manager();
+                    }, 100);
+                }
+            } else if (sectionId === 3) {
+                labWrapper.style.display = 'block';
+                if (typeof updateViewBox === 'function') setTimeout(updateViewBox, 50);
+                if (!window.quiz3) {
+                    setTimeout(() => {
+                        window.quiz3 = new Quiz3Manager();
+                    }, 100);
+                }
+            } else {
+                labWrapper.style.display = 'none';
             }
+        }
+    </script>
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('visible');
         }
     </script>
 </body>

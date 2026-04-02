@@ -3,8 +3,7 @@ const svg = document.getElementById('mainSvg');
 const gridLayer = document.getElementById('grid-layer');
 const objectsLayer = document.getElementById('objects-layer');
 const uiLayer = document.getElementById('ui-layer');
-const cursorPosDisplay = document.getElementById('cursor-pos');
-const selectionInfoDisplay = document.getElementById('selection-info');
+
 
 // Durum Yönetimi
 const state = {
@@ -98,6 +97,29 @@ const Geometry = {
         return [
             { x: x0 + b * mult, y: y0 - a * mult },
             { x: x0 - b * mult, y: y0 + a * mult }
+        ];
+    },
+
+    // İki çember kesişimi
+    getCircleCircleIntersection: (c1, c2) => {
+        const d = Math.hypot(c2.x - c1.x, c2.y - c1.y);
+        if (d < 1e-6) return []; // Eş merkezli
+        if (d > c1.r + c2.r + 1e-6) return []; // Dışta
+        if (d < Math.abs(c1.r - c2.r) - 1e-6) return []; // Biri diğerinin içinde
+
+        const a = (c1.r * c1.r - c2.r * c2.r + d * d) / (2 * d);
+        const h2 = c1.r * c1.r - a * a;
+        if (h2 < 0) return [];
+        const h = Math.sqrt(h2);
+
+        const px = c1.x + a * (c2.x - c1.x) / d;
+        const py = c1.y + a * (c2.y - c1.y) / d;
+
+        if (h < 1e-6) return [{ x: px, y: py }]; // Teğet
+
+        return [
+            { x: px + h * (c2.y - c1.y) / d, y: py - h * (c2.x - c1.x) / d },
+            { x: px - h * (c2.y - c1.y) / d, y: py + h * (c2.x - c1.x) / d }
         ];
     },
 
@@ -226,6 +248,7 @@ function getSnappedPoint(x, y, excludeIds = []) {
     const lasers = state.objects.filter(o => o.type === 'laser' && !excludeIds.includes(o.id));
     const points = state.objects.filter(o => o.type === 'point' && !excludeIds.includes(o.id));
     const polygons = state.objects.filter(o => o.type === 'polygon' && !excludeIds.includes(o.id));
+    const parabolaObjs = state.objects.filter(o => o.type === 'parabola' && !excludeIds.includes(o.id));
 
     let pointsToCheck = [];
 
@@ -237,19 +260,47 @@ function getSnappedPoint(x, y, excludeIds = []) {
         pointsToCheck.push(...poly.points);
     }
 
-    // Doğru - Doğru
-    for (let i = 0; i < lines.length; i++) {
-        for (let j = i + 1; j < lines.length; j++) {
-            const pt = Geometry.getLineIntersection(lines[i], lines[j]);
+    // Çokgen kenarlarını doğru parçaları olarak topla
+    const polyLines = [];
+    for (let poly of polygons) {
+        const pts = poly.points;
+        const edgeCount = poly.isClosed ? pts.length : pts.length - 1;
+        for (let i = 0; i < edgeCount; i++) {
+            const p1 = pts[i];
+            const p2 = pts[(i + 1) % pts.length];
+            polyLines.push({ x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y });
+        }
+    }
+
+    // Tüm doğru benzeri nesneler (doğrular + çokgen kenarları)
+    const allLines = [...lines, ...polyLines];
+
+    // Doğru - Doğru (çokgen kenarları dahil)
+    for (let i = 0; i < allLines.length; i++) {
+        for (let j = i + 1; j < allLines.length; j++) {
+            const pt = Geometry.getLineIntersection(allLines[i], allLines[j]);
             if (pt) pointsToCheck.push(pt);
         }
         // Doğru - Çember
         for (let c of circles) {
-            const pts = Geometry.getLineCircleIntersection(lines[i], c);
+            const pts = Geometry.getLineCircleIntersection(allLines[i], c);
+            pointsToCheck.push(...pts);
+        }
+        // Doğru - Parabol
+        for (let p of parabolaObjs) {
+            const pts = Geometry.getLineParabolaIntersection(allLines[i], p);
             pointsToCheck.push(...pts);
         }
     }
-    
+
+    // Çember - Çember
+    for (let i = 0; i < circles.length; i++) {
+        for (let j = i + 1; j < circles.length; j++) {
+            const pts = Geometry.getCircleCircleIntersection(circles[i], circles[j]);
+            pointsToCheck.push(...pts);
+        }
+    }
+
     // Lazer Işını Kesişimleri
     for (let l of lasers) {
         // Lazerin kendi ışını bir doğrudur
@@ -257,14 +308,19 @@ function getSnappedPoint(x, y, excludeIds = []) {
         const endY = l.y + Math.sin(l.angle);
         const laserLine = { x1: l.x, y1: l.y, x2: endX, y2: endY }; // Sonsuz doğru olarak
         
-        // Diğer doğrularla
-        for (let line of lines) {
+        // Diğer doğrularla (çokgen kenarları dahil)
+        for (let line of allLines) {
             const pt = Geometry.getLineIntersection(laserLine, line);
             if (pt) pointsToCheck.push(pt);
         }
         // Diğer çemberlerle
         for (let c of circles) {
             const pts = Geometry.getLineCircleIntersection(laserLine, c);
+            pointsToCheck.push(...pts);
+        }
+        // Parabollarla
+        for (let p of parabolaObjs) {
+            const pts = Geometry.getLineParabolaIntersection(laserLine, p);
             pointsToCheck.push(...pts);
         }
         // Diğer lazerlerle
@@ -357,10 +413,31 @@ function getSnappedAngle(currentAngle, obj) {
 function getMousePosition(evt) {
     const CTM = svg.getScreenCTM();
     if (!CTM) return { x: 0, y: 0 };
+    // Support touch events
+    let clientX, clientY;
+    if (evt.touches && evt.touches.length > 0) {
+        clientX = evt.touches[0].clientX;
+        clientY = evt.touches[0].clientY;
+    } else if (evt.changedTouches && evt.changedTouches.length > 0) {
+        clientX = evt.changedTouches[0].clientX;
+        clientY = evt.changedTouches[0].clientY;
+    } else {
+        clientX = evt.clientX;
+        clientY = evt.clientY;
+    }
     return {
-        x: (evt.clientX - CTM.e) / CTM.a,
-        y: (evt.clientY - CTM.f) / CTM.d
+        x: (clientX - CTM.e) / CTM.a,
+        y: (clientY - CTM.f) / CTM.d
     };
+}
+
+function getClientPosition(evt) {
+    if (evt.touches && evt.touches.length > 0) {
+        return { clientX: evt.touches[0].clientX, clientY: evt.touches[0].clientY };
+    } else if (evt.changedTouches && evt.changedTouches.length > 0) {
+        return { clientX: evt.changedTouches[0].clientX, clientY: evt.changedTouches[0].clientY };
+    }
+    return { clientX: evt.clientX, clientY: evt.clientY };
 }
 
 function mathToSvg(x, y) { return { x: x, y: -y }; }
@@ -721,16 +798,46 @@ function renderUI() {
     const obj = state.selectedObject;
 
     if (obj.type === 'laser') {
-        const handleDist = obj.size * 1.5; // Lazer boyuna göre handle mesafesi
+        const handleDist = obj.size * 2.5;
         const hx = obj.x + handleDist * Math.cos(obj.angle);
         const hy = obj.y + handleDist * Math.sin(obj.angle);
+        // Dashed line from center to handle
         uiLayer.appendChild(createSVGElement('line', {
             x1: obj.x, y1: obj.y, x2: hx, y2: hy,
             stroke: '#f1c40f', 'stroke-width': '1px', 'stroke-dasharray': '4 4', 'vector-effect': 'non-scaling-stroke'
         }));
-        uiLayer.appendChild(createSVGElement('line', {
+        // Large invisible touch target — uses real SVG fill so browser hit-testing works
+        const hitAreaRadius = Math.max(2.5, state.viewWidth * 0.06);
+        const hitArea = createSVGElement('circle', {
+            cx: hx, cy: hy, r: hitAreaRadius,
+            fill: 'rgba(255,200,0,0.01)', stroke: 'none',
+            'pointer-events': 'all',
+            class: 'handle-hit-area', 'data-action': 'rotate', cursor: 'grab'
+        });
+        // DIRECT touch listener on hit area — uses startTouchRotation for reliable screen-space rotation
+        hitArea.addEventListener('touchstart', function(te) {
+            te.stopPropagation();
+            te.preventDefault();
+            if (te.touches.length !== 1) return;
+            const currentObj = state.selectedObject;
+            if (!currentObj || currentObj.type !== 'laser') return;
+            startTouchRotation(currentObj);
+        }, { passive: false });
+        uiLayer.appendChild(hitArea);
+        // Visible handle dot
+        const handleDot = createSVGElement('line', {
             x1: hx, y1: hy, x2: hx, y2: hy, class: 'handle', 'data-action': 'rotate'
-        }));
+        });
+        // DIRECT touch listener on visible handle dot too
+        handleDot.addEventListener('touchstart', function(te) {
+            te.stopPropagation();
+            te.preventDefault();
+            if (te.touches.length !== 1) return;
+            const currentObj = state.selectedObject;
+            if (!currentObj || currentObj.type !== 'laser') return;
+            startTouchRotation(currentObj);
+        }, { passive: false });
+        uiLayer.appendChild(handleDot);
         uiLayer.appendChild(createSVGElement('circle', {
             cx: obj.x, cy: obj.y, r: obj.size * 0.6, class: 'selected-outline'
         }));
@@ -757,20 +864,6 @@ function renderUI() {
         uiLayer.appendChild(createSVGElement('line', { x1: obj.x2, y1: obj.y2, x2: obj.x2, y2: obj.y2, class: 'handle', 'data-action': 'move-p2' }));
     }
     
-    updateSelectionInfo();
-}
-
-function updateSelectionInfo() {
-    if (!state.selectedObject) {
-        selectionInfoDisplay.innerHTML = '';
-        return;
-    }
-    const obj = state.selectedObject;
-    let html = `<strong>Seçili: ${obj.type.toUpperCase()}</strong><br>`;
-    const mathPos = svgToMath(obj.x, obj.y);
-    if (obj.x !== undefined) html += `x: ${mathPos.x.toFixed(2)}<br>y: ${mathPos.y.toFixed(2)}<br>`;
-    if (obj.angle !== undefined) html += `Açı: ${(obj.angle * 180 / Math.PI).toFixed(1)}°<br>`;
-    selectionInfoDisplay.innerHTML = html;
 }
 
 // ==========================================
@@ -810,11 +903,20 @@ function setLaserDirectionRay(laser) {
 
 svg.addEventListener('mousedown', e => {
     e.preventDefault();
+    handlePointerDown(e);
+});
+
+svg.addEventListener('mousemove', e => {
+    e.preventDefault();
+    handlePointerMove(e);
+});
+
+function handlePointerDown(e) {
     let pt = getMousePosition(e);
     
     // Snapping (Nokta Ekle, Çokgen, Doğru Uçları için)
     // Eğer tempObject varsa (çizim sırası) veya nokta/çokgen aracı seçiliyse snap yap
-    if (['point', 'polygon', 'line', 'laser'].includes(state.selectedTool) || state.dragAction === 'create-line') {
+    if (['point', 'polygon', 'line', 'laser', 'circle'].includes(state.selectedTool) || state.dragAction === 'create-line') {
         // Düzenlenen nesneyi snap hesaplamasından hariç tut
         const exclude = state.selectedObject ? [state.selectedObject.id] : [];
         if (state.dragAction === 'create-line' && state.tempObject) {
@@ -833,6 +935,40 @@ svg.addEventListener('mousedown', e => {
         if (clickedId) {
             state.objects = state.objects.filter(o => o.id !== clickedId);
             renderObjects();
+        }
+        return;
+    }
+
+    // 0b. Kopyalama Aracı
+    if (state.selectedTool === 'copy') {
+        let clickedId = target.getAttribute('data-id') || target.parentElement?.getAttribute('data-id');
+        const obj = findObjectById(clickedId);
+        if (obj) {
+            const offset = state.gridStep;
+            let newObj;
+            if (obj.type === 'laser') {
+                newObj = new Laser(obj.x + offset, obj.y + offset);
+                newObj.angle = obj.angle;
+                newObj.size = obj.size;
+            } else if (obj.type === 'point') {
+                newObj = new Point(obj.x + offset, obj.y + offset);
+            } else if (obj.type === 'line') {
+                newObj = new Line(obj.x1 + offset, obj.y1 + offset, obj.x2 + offset, obj.y2 + offset);
+            } else if (obj.type === 'circle') {
+                newObj = new Circle(obj.x + offset, obj.y + offset, obj.r);
+            } else if (obj.type === 'parabola') {
+                newObj = new Parabola(obj.x + offset, obj.y + offset);
+                newObj.a = obj.a;
+            } else if (obj.type === 'polygon') {
+                newObj = new Polygon(obj.points.map(p => ({ x: p.x + offset, y: p.y + offset })));
+                newObj.isClosed = obj.isClosed;
+            }
+            if (newObj) {
+                state.objects.push(newObj);
+                state.selectedObject = newObj;
+                setTool('move');
+                renderObjects();
+            }
         }
         return;
     }
@@ -876,10 +1012,29 @@ svg.addEventListener('mousedown', e => {
         return;
     }
 
-    // 1. Tutamaç (Handle)
-    if (target.classList.contains('handle')) {
+    // 1. Tutamaç (Handle) - handle ve handle-hit-area
+    let isHandleHit = target.classList.contains('handle') || target.classList.contains('handle-hit-area');
+    let handleAction = isHandleHit ? target.getAttribute('data-action') : null;
+
+    // Geometric fallback for touch: if a laser is selected, check SVG-space distance to handle
+    if (!isHandleHit && state.selectedObject && state.selectedObject.type === 'laser' && state.selectedTool === 'move') {
+        const obj = state.selectedObject;
+        const handleDist = obj.size * 2.5;
+        const hx = obj.x + handleDist * Math.cos(obj.angle);
+        const hy = obj.y + handleDist * Math.sin(obj.angle);
+        // Use SVG coordinate distance (more reliable than screen coords on mobile)
+        const svgDist = Math.hypot(pt.x - hx, pt.y - hy);
+        // Generous threshold: 15% of viewWidth or at least 2 SVG units
+        const hitThreshold = Math.max(2, state.viewWidth * 0.15);
+        if (svgDist < hitThreshold) {
+            isHandleHit = true;
+            handleAction = 'rotate';
+        }
+    }
+
+    if (isHandleHit) {
         state.isDragging = true;
-        state.dragAction = target.getAttribute('data-action');
+        state.dragAction = handleAction;
         state.dragStartX = pt.x;
         state.dragStartY = pt.y;
         if (state.dragAction === 'rotate' && state.selectedObject && state.selectedObject.type === 'laser') {
@@ -949,9 +1104,19 @@ svg.addEventListener('mousedown', e => {
             setTool('move');
         }
         else if (state.selectedTool === 'line') {
-            state.tempObject = new Line(pt.x, pt.y, pt.x, pt.y);
-            state.isDragging = true;
-            state.dragAction = 'create-line';
+            if (!state.tempObject) {
+                // 1. tıklama: ilk noktayı belirle
+                state.tempObject = new Line(pt.x, pt.y, pt.x, pt.y);
+            } else {
+                // 2. tıklama: ikinci noktayı belirle ve doğruyu tamamla
+                state.tempObject.x2 = pt.x;
+                state.tempObject.y2 = pt.y;
+                if (Math.hypot(state.tempObject.x2 - state.tempObject.x1, state.tempObject.y2 - state.tempObject.y1) > 1e-6) {
+                    state.objects.push(state.tempObject);
+                }
+                state.tempObject = null;
+                setTool('move');
+            }
         }
         else if (state.selectedTool === 'polygon') {
             if (!state.tempObject) {
@@ -971,6 +1136,27 @@ svg.addEventListener('mousedown', e => {
     if (obj) {
         state.selectedObject = obj;
         state.isDragging = true;
+        
+        // Touch rotation: when touching a laser, if finger is closer to handle end than body center, rotate
+        if (obj.type === 'laser' && e.touches) {
+            const handleDist = obj.size * 2.5;
+            const hx = obj.x + handleDist * Math.cos(obj.angle);
+            const hy = obj.y + handleDist * Math.sin(obj.angle);
+            const distToHandle = Math.hypot(pt.x - hx, pt.y - hy);
+            const distToCenter = Math.hypot(pt.x - obj.x, pt.y - obj.y);
+            
+            if (distToHandle < distToCenter) {
+                state.dragAction = 'rotate';
+                const tipX = obj.x + Math.cos(obj.angle) * (obj.size / 2);
+                const tipY = obj.y + Math.sin(obj.angle) * (obj.size / 2);
+                state.rotatePivot = { x: tipX, y: tipY };
+                state.dragStartX = pt.x;
+                state.dragStartY = pt.y;
+                renderObjects();
+                return;
+            }
+        }
+        
         state.dragAction = 'move';
         state.dragStartX = pt.x;
         state.dragStartY = pt.y;
@@ -982,25 +1168,24 @@ svg.addEventListener('mousedown', e => {
         }
         state.isDragging = true;
         state.dragAction = 'pan';
-        state.dragStartX = e.clientX;
-        state.dragStartY = e.clientY;
+        const client = getClientPosition(e);
+        state.dragStartX = client.clientX;
+        state.dragStartY = client.clientY;
     }
-});
+}
 
-svg.addEventListener('mousemove', e => {
-    e.preventDefault();
+function handlePointerMove(e) {
     let pt = getMousePosition(e);
     
     // Snap Önizleme
     state.snappedPoint = null;
-    if (['point', 'polygon', 'line', 'laser'].includes(state.selectedTool) || 
-        state.dragAction === 'create-line' || 
+    if (['point', 'polygon', 'line', 'laser', 'circle'].includes(state.selectedTool) || 
         state.dragAction === 'move-p1' || 
         state.dragAction === 'move-p2') {
         
         // Düzenlenen nesneyi snap hesaplamasından hariç tut
         const exclude = state.selectedObject ? [state.selectedObject.id] : [];
-        if (state.dragAction === 'create-line' && state.tempObject) {
+        if (state.selectedTool === 'line' && state.tempObject) {
             exclude.push(state.tempObject.id);
         }
         
@@ -1012,18 +1197,23 @@ svg.addEventListener('mousemove', e => {
     }
     renderUI(); // Snap marker güncellemek için
 
-    const mathPt = svgToMath(pt.x, pt.y);
-    cursorPosDisplay.innerText = `x: ${mathPt.x.toFixed(2).replace('.', ',')}, y: ${mathPt.y.toFixed(2).replace('.', ',')}`;
-    
+    // Doğru çizimi iki tıklama arası önizleme (isDragging olmadan da çalışmalı)
+    if (state.selectedTool === 'line' && state.tempObject) {
+        state.tempObject.x2 = pt.x;
+        state.tempObject.y2 = pt.y;
+        renderObjects();
+    }
+
     if (!state.isDragging) return;
     
     if (state.dragAction === 'pan') {
-        const dx = (e.clientX - state.dragStartX) / (svg.clientWidth / state.viewWidth);
-        const dy = (e.clientY - state.dragStartY) / (svg.clientHeight / state.viewHeight);
+        const client = getClientPosition(e);
+        const dx = (client.clientX - state.dragStartX) / (svg.clientWidth / state.viewWidth);
+        const dy = (client.clientY - state.dragStartY) / (svg.clientHeight / state.viewHeight);
         state.viewX -= dx;
         state.viewY -= dy;
-        state.dragStartX = e.clientX;
-        state.dragStartY = e.clientY;
+        state.dragStartX = client.clientX;
+        state.dragStartY = client.clientY;
         updateViewBox();
         return;
     }
@@ -1085,24 +1275,220 @@ svg.addEventListener('mousemove', e => {
         renderObjects();
     }
     
-    if (state.dragAction === 'create-line' && state.tempObject) {
-        state.tempObject.x2 = pt.x;
-        state.tempObject.y2 = pt.y;
-        renderObjects();
-    }
-});
+}
 
 window.addEventListener('mouseup', () => {
-    if (state.dragAction === 'create-line' && state.tempObject) {
-        state.objects.push(state.tempObject);
-        state.tempObject = null;
-        setTool('move');
-        renderObjects();
-    }
     state.isDragging = false;
     state.dragAction = null;
     state.rotatePivot = null;
 });
+
+// ==========================================
+// TOUCH EVENT SUPPORT
+// ==========================================
+
+// Pinch-to-zoom state
+let touchState = {
+    lastPinchDist: 0,
+    isPinching: false,
+    // Screen-space pivot for touch rotation (saved once at drag start, never recalculated)
+    pivotScreenX: 0,
+    pivotScreenY: 0,
+    isRotating: false
+};
+
+function getTouchDistance(t1, t2) {
+    return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+}
+
+// Start touch rotation: saves pivot in SCREEN coords (called once, never recalculated)
+function startTouchRotation(obj) {
+    const CTM = svg.getScreenCTM();
+    if (!CTM) return false;
+    const tipX = obj.x + Math.cos(obj.angle) * (obj.size / 2);
+    const tipY = obj.y + Math.sin(obj.angle) * (obj.size / 2);
+    // Convert pivot to screen coordinates ONCE
+    touchState.pivotScreenX = CTM.e + CTM.a * tipX;
+    touchState.pivotScreenY = CTM.f + CTM.d * tipY;
+    touchState.isRotating = true;
+    state.isDragging = true;
+    state.dragAction = 'rotate';
+    state.rotatePivot = { x: tipX, y: tipY };
+    return true;
+}
+
+// Process touch rotation using screen coordinates (no getScreenCTM per frame)
+function processTouchRotation(touchClientX, touchClientY) {
+    const obj = state.selectedObject;
+    const pivot = state.rotatePivot;
+    if (!obj || obj.type !== 'laser' || !pivot) return;
+    // Compute angle in screen space (uniform scaling means screen angle = SVG angle)
+    let angle = Math.atan2(touchClientY - touchState.pivotScreenY, touchClientX - touchState.pivotScreenX);
+    angle = getSnappedAngle(angle, obj);
+    obj.angle = angle;
+    obj.x = pivot.x - Math.cos(angle) * (obj.size / 2);
+    obj.y = pivot.y - Math.sin(angle) * (obj.size / 2);
+    renderObjects();
+    renderUI();
+}
+
+svg.addEventListener('touchstart', e => {
+    e.preventDefault();
+
+    // Pinch-to-zoom with two fingers
+    if (e.touches.length === 2) {
+        touchState.isPinching = true;
+        touchState.lastPinchDist = getTouchDistance(e.touches[0], e.touches[1]);
+        state.isDragging = false;
+        state.dragAction = null;
+        return;
+    }
+
+    const touch = e.touches[0];
+
+    // DIRECT touch rotation/resize handle detection — pure coordinate math, no elementFromPoint
+    // This is the PRIMARY method for touch handle detection (elementFromPoint is unreliable on mobile)
+    if (state.selectedObject && state.selectedTool === 'move') {
+        const CTM = svg.getScreenCTM();
+        if (CTM) {
+            const svgX = (touch.clientX - CTM.e) / CTM.a;
+            const svgY = (touch.clientY - CTM.f) / CTM.d;
+            const obj = state.selectedObject;
+
+            if (obj.type === 'laser') {
+                const handleDist = obj.size * 2.5;
+                const hx = obj.x + handleDist * Math.cos(obj.angle);
+                const hy = obj.y + handleDist * Math.sin(obj.angle);
+                const distToHandle = Math.hypot(svgX - hx, svgY - hy);
+                const distToCenter = Math.hypot(svgX - obj.x, svgY - obj.y);
+                // Touch closer to handle than to laser center → rotate
+                if (distToHandle < Math.max(2, state.viewWidth * 0.12) && distToHandle < distToCenter) {
+                    startTouchRotation(obj);
+                    return; // Do NOT call handlePointerDown
+                }
+            } else if (obj.type === 'circle') {
+                const hx = obj.x + obj.r;
+                const hy = obj.y;
+                const distToHandle = Math.hypot(svgX - hx, svgY - hy);
+                if (distToHandle < Math.max(1, state.viewWidth * 0.08)) {
+                    state.isDragging = true;
+                    state.dragAction = 'resize';
+                    state.dragStartX = svgX;
+                    state.dragStartY = svgY;
+                    return;
+                }
+            }
+        }
+    }
+
+    // Single touch - forward to mousedown logic
+    const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
+
+    // Create a synthetic event-like object
+    const syntheticEvent = {
+        preventDefault: () => {},
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+        touches: e.touches,
+        target: targetEl || e.target
+    };
+
+    // Fire mousedown handler
+    handlePointerDown(syntheticEvent);
+}, { passive: false });
+
+svg.addEventListener('touchmove', e => {
+    e.preventDefault();
+
+    // Pinch-to-zoom
+    if (e.touches.length === 2 && touchState.isPinching) {
+        const newDist = getTouchDistance(e.touches[0], e.touches[1]);
+        if (touchState.lastPinchDist > 0) {
+            const scale = touchState.lastPinchDist / newDist;
+            // Zoom center: midpoint of two touches
+            const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+            const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+            const CTM = svg.getScreenCTM();
+            if (CTM) {
+                const svgMidX = (midX - CTM.e) / CTM.a;
+                const svgMidY = (midY - CTM.f) / CTM.d;
+                const newWidth = Math.max(2, Math.min(100, state.viewWidth * scale));
+                const ratio = newWidth / state.viewWidth;
+                state.viewX = svgMidX - (svgMidX - state.viewX) * ratio;
+                state.viewY = svgMidY - (svgMidY - state.viewY) * ratio;
+                state.viewWidth = newWidth;
+                updateViewBox();
+            }
+        }
+        touchState.lastPinchDist = newDist;
+        return;
+    }
+
+    if (e.touches.length !== 1) return;
+
+    // DIRECT touch rotation — bypass handlePointerMove entirely
+    // Uses screen-space coords saved at drag start (no getScreenCTM per frame)
+    if (touchState.isRotating && state.isDragging && state.dragAction === 'rotate') {
+        processTouchRotation(e.touches[0].clientX, e.touches[0].clientY);
+        return;
+    }
+
+    // Single touch move - forward to mousemove logic
+    const syntheticEvent = {
+        preventDefault: () => {},
+        clientX: e.touches[0].clientX,
+        clientY: e.touches[0].clientY,
+        touches: e.touches,
+        target: e.target
+    };
+
+    handlePointerMove(syntheticEvent);
+}, { passive: false });
+
+svg.addEventListener('touchend', e => {
+    e.preventDefault();
+
+    if (touchState.isPinching) {
+        touchState.isPinching = false;
+        touchState.lastPinchDist = 0;
+        if (e.touches.length === 0) {
+            state.isDragging = false;
+            state.dragAction = null;
+        }
+        return;
+    }
+
+    state.isDragging = false;
+    state.dragAction = null;
+    state.rotatePivot = null;
+    touchState.isRotating = false;
+}, { passive: false });
+
+svg.addEventListener('touchcancel', () => {
+    touchState.isPinching = false;
+    touchState.lastPinchDist = 0;
+    state.isDragging = false;
+    state.dragAction = null;
+    state.rotatePivot = null;
+    touchState.isRotating = false;
+});
+
+// Document-level touch handlers — safety net for when touch starts on handle elements
+// (touchmove/touchend might not bubble to SVG on some mobile browsers)
+document.addEventListener('touchmove', e => {
+    if (!touchState.isRotating || !state.isDragging || state.dragAction !== 'rotate') return;
+    if (!e.touches || e.touches.length !== 1) return;
+    e.preventDefault();
+    processTouchRotation(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: false });
+
+document.addEventListener('touchend', e => {
+    if (!state.isDragging) return;
+    state.isDragging = false;
+    state.dragAction = null;
+    state.rotatePivot = null;
+    touchState.isRotating = false;
+}, { passive: false });
 
 // UI Event Listeners
 function setTool(tool) {
@@ -1118,7 +1504,7 @@ function setTool(tool) {
     }
 }
 
-['move', 'laser', 'point', 'circle', 'polygon', 'parabola', 'line', 'direction', 'delete'].forEach(tool => {
+['move', 'laser', 'point', 'circle', 'polygon', 'parabola', 'line', 'direction', 'copy', 'delete'].forEach(tool => {
     const btn = document.getElementById(`tool-${tool}`);
     if (btn) btn.addEventListener('click', () => setTool(tool));
 });
@@ -1163,5 +1549,22 @@ document.getElementById('tool-clear').addEventListener('click', () => {
 });
 
 window.addEventListener('resize', updateViewBox);
+
+// Prevent default touch behaviors on SVG canvas
+svg.style.touchAction = 'none';
+
+// Mouse wheel zoom
+svg.addEventListener('wheel', e => {
+    e.preventDefault();
+    const scale = e.deltaY > 0 ? 1.1 : 0.9;
+    const pt = getMousePosition(e);
+    const newWidth = Math.max(2, Math.min(100, state.viewWidth * scale));
+    const ratio = newWidth / state.viewWidth;
+    state.viewX = pt.x - (pt.x - state.viewX) * ratio;
+    state.viewY = pt.y - (pt.y - state.viewY) * ratio;
+    state.viewWidth = newWidth;
+    updateViewBox();
+}, { passive: false });
+
 updateViewBox();
 renderObjects();

@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Uygulama 2: Fonksiyon Grafikleri</title>
     <!-- Font Awesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -47,8 +47,68 @@
             display: flex;
             flex-direction: column;
             padding: 24px;
-            z-index: 10;
-            box-shadow: 4px 0 24px rgba(0,0,0,0.02);
+            z-index: 100;
+            box-shadow: 4px 0 24px rgba(0,0,0,0.15);
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            transform: translateX(calc(-1 * var(--sidebar-width)));
+            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        #sidebar.open {
+            transform: translateX(0);
+        }
+
+        #sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.3);
+            z-index: 99;
+        }
+
+        #sidebar-overlay.visible {
+            display: block;
+        }
+
+        #hamburger-btn {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 101;
+            background: white;
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 10px;
+            width: 42px;
+            height: 42px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+        }
+
+        #hamburger-btn span {
+            display: block;
+            width: 20px;
+            height: 2px;
+            background: var(--text-color);
+            border-radius: 2px;
+            transition: all 0.2s;
+        }
+
+        #hamburger-btn:hover {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        #hamburger-btn:hover span {
+            background: white;
         }
 
         .brand {
@@ -121,13 +181,14 @@
         #content-area {
             flex: 1;
             overflow-y: auto;
-            padding: 40px;
+            padding: 70px 16px 40px;
             scroll-behavior: smooth;
+            width: 100%;
         }
 
         .container {
-            max-width: 900px;
-            margin: 0 auto;
+            max-width: 100%;
+            margin: 0;
             padding-bottom: 60px;
         }
 
@@ -624,7 +685,7 @@
             border-radius: 4px;
         }
         /* Tutorial Overlay Styles */
-        #tutorial-container {
+        #tutorial-container, #quiz-container {
             background: #fff;
             border-radius: 16px;
             padding: 24px;
@@ -633,6 +694,23 @@
             border-left: 5px solid var(--primary-color);
             position: relative;
             overflow: hidden;
+        }
+
+        #quiz-progress-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 4px;
+            background: var(--success-color);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        #quiz-instruction {
+            font-size: 1.1rem;
+            margin-bottom: 16px;
+            color: var(--text-color);
+            line-height: 1.6;
         }
 
         #tutorial-progress-bar {
@@ -694,7 +772,7 @@
             color: #721c24;
         }
 
-        #tutorial-next-btn {
+        #tutorial-next-btn, #quiz-next-btn {
             background: var(--primary-color);
             color: white;
             border: none;
@@ -706,7 +784,7 @@
             float: right;
         }
         
-        #tutorial-next-btn:disabled {
+        #tutorial-next-btn:disabled, #quiz-next-btn:disabled {
             background: #ccc;
             cursor: not-allowed;
         }
@@ -720,9 +798,156 @@
             70% { box-shadow: 0 0 0 10px rgba(67, 97, 238, 0); }
             100% { box-shadow: 0 0 0 0 rgba(67, 97, 238, 0); }
         }
+
+        /* Portrait Rotation Overlay */
+        #portrait-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            background: linear-gradient(135deg, #4361ee 0%, #3f37c9 100%);
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+            padding: 40px;
+        }
+        #portrait-overlay .rotate-icon {
+            width: 100px; height: 100px; margin-bottom: 30px;
+            animation: rotatePhone 2s ease-in-out infinite;
+        }
+        #portrait-overlay .rotate-icon svg { width: 100%; height: 100%; fill: white; }
+        #portrait-overlay h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 12px; color: white; }
+        #portrait-overlay p { font-size: 1rem; opacity: 0.85; max-width: 300px; line-height: 1.6; }
+        @keyframes rotatePhone {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-30deg); }
+            75% { transform: rotate(90deg); }
+        }
+        @media (orientation: portrait) and (max-width: 1024px) {
+            #portrait-overlay { display: flex !important; }
+            #content-area, #sidebar, #hamburger-btn, #sidebar-overlay { display: none !important; }
+        }
+        @media (orientation: landscape), (min-width: 1025px) {
+            #portrait-overlay { display: none !important; }
+        }
+
+        /* Touch-friendly targets */
+        @media (pointer: coarse) {
+            .nav-btn { min-height: 44px; }
+            #hamburger-btn { min-width: 44px; min-height: 44px; }
+            svg { touch-action: none; }
+            .handle { stroke-width: 28px; }
+            .handle-hit-area { pointer-events: all !important; }
+            .point { stroke-width: 14px; }
+            .polygon-vertex { stroke-width: 14px; }
+        }
+
+        /* Responsive lab layout — tablets in landscape */
+        @media (max-width: 1024px) {
+            .lab-shell {
+                grid-template-columns: 200px 1fr;
+                gap: 12px;
+                padding: 12px;
+            }
+            .lab-panel {
+                min-height: auto;
+                padding: 12px;
+            }
+            #canvas-container {
+                min-height: 400px;
+            }
+            #tools-panel button {
+                padding: 7px 10px;
+                font-size: 0.85rem;
+                margin-bottom: 4px;
+                gap: 8px;
+            }
+            #tools-panel h3 {
+                margin: 8px 0 4px;
+                font-size: 0.72rem;
+            }
+            .card {
+                padding: 20px;
+            }
+            #content-area {
+                padding-top: 54px;
+            }
+        }
+
+        /* Responsive lab layout — phones in landscape */
+        @media (max-width: 850px) {
+            .lab-shell {
+                grid-template-columns: 150px 1fr;
+                gap: 8px;
+                padding: 8px;
+                margin-top: 12px;
+            }
+            .lab-panel {
+                padding: 8px;
+            }
+            #canvas-container {
+                min-height: 300px;
+            }
+            #tools-panel button {
+                padding: 5px 7px;
+                font-size: 0.78rem;
+                margin-bottom: 3px;
+                gap: 5px;
+                border-radius: 7px;
+            }
+            #tools-panel h3 {
+                margin: 6px 0 3px;
+                font-size: 0.65rem;
+            }
+            .card {
+                padding: 14px;
+                margin-bottom: 16px;
+            }
+            .card h2 {
+                font-size: 1.1rem;
+                margin-bottom: 10px;
+            }
+            .card p {
+                font-size: 0.92rem;
+                margin-bottom: 8px;
+            }
+            #content-area {
+                padding: 48px 8px 20px;
+            }
+        }
+
+        /* Short viewport — phone landscape height */
+        @media (max-height: 500px) {
+            .lab-panel, #canvas-container {
+                min-height: auto;
+            }
+            .lab-shell {
+                min-height: calc(100vh - 160px);
+            }
+            #canvas-container {
+                min-height: calc(100vh - 200px);
+            }
+        }
     </style>
 </head>
 <body>
+    <!-- Portrait Mode Overlay -->
+    <div id="portrait-overlay">
+        <div class="rotate-icon">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M16.48 2.52c3.27 1.55 5.61 4.72 5.97 8.48h1.5C23.44 4.84 18.29 0 12 0l-.66.03 3.81 3.81 1.33-1.32zm-6.25-.77c-.59-.59-1.54-.59-2.12 0L1.75 8.11c-.59.59-.59 1.54 0 2.12l12.02 12.02c.59.59 1.54.59 2.12 0l6.36-6.36c.59-.59.59-1.54 0-2.12L10.23 1.75zm4.6 19.44L2.81 9.17l6.36-6.36 12.02 12.02-6.36 6.36zm-7.31.29C4.25 19.94 1.91 16.76 1.55 13H.05C.56 19.16 5.71 24 12 24l.66-.03-3.81-3.81-1.33 1.32z"/>
+            </svg>
+        </div>
+        <h2>Cihazınızı Çevirin</h2>
+        <p>Bu uygulama yatay modda çalışmaktadır. Lütfen cihazınızı yatay konuma getirin.</p>
+    </div>
+
+    <div id="sidebar-overlay" onclick="toggleSidebar()"></div>
+    <button id="hamburger-btn" onclick="toggleSidebar()" aria-label="Menüyü Aç/Kapat">
+        <span></span><span></span><span></span>
+    </button>
     <!-- Sidebar Navigation -->
     <aside id="sidebar">
         <div class="brand">
@@ -731,10 +956,10 @@
         </div>
         
         <div id="lesson-nav">
-            <button class="nav-btn" onclick="showSection(1)" id="btn-section-1">
+            <button class="nav-btn active" onclick="showSection(1)" id="btn-section-1">
                 <i class="fas fa-book-open"></i> 1. Temel Bilgiler
             </button>
-            <button class="nav-btn active" onclick="showSection(2)" id="btn-section-2">
+            <button class="nav-btn" onclick="showSection(2)" id="btn-section-2">
                 <i class="fas fa-pencil-ruler"></i> 2. Uygulama
             </button>
             <button class="nav-btn" onclick="showSection(3)" id="btn-section-3">
@@ -750,7 +975,7 @@
     <!-- Main Content -->
     <main id="content-area">
         <div class="container">
-            <div id="section-1" class="section-content" style="display: none;">
+            <div id="section-1" class="section-content">
                 <header>
                     <h1>Üçgen Çeşitleri ve Yükseklik</h1>
                     <p class="subtitle">Açılarına göre üçgenler ve yüksekliklerin kesişim noktası (Diklik Merkezi)</p>
@@ -957,7 +1182,7 @@
                 </div>
             </div>
 
-            <div id="section-2" class="section-content">
+            <div id="section-2" class="section-content" style="display: none;">
                 <section class="card" id="uygulama-2">
                     <h2><i class="fas fa-pencil-ruler"></i> 2. Uygulama</h2>
                     
@@ -994,16 +1219,13 @@
                             <button id="tool-clear"><i class="fas fa-eraser"></i> Temizle</button>
                         </div>
 
-                        <div id="info-panel">
-                            <p id="cursor-pos">x: 0, y: 0</p>
-                            <div id="selection-info"></div>
-                        </div>
                     </div>
 
                     <main id="canvas-container">
                         <svg id="mainSvg" xmlns="http://www.w3.org/2000/svg">
                             <g id="grid-layer"></g>
                             <g id="objects-layer"></g>
+                            <g id="tutorial-vertex-labels"></g>
                             <g id="ui-layer"></g>
                         </svg>
                     </main>
@@ -1011,20 +1233,36 @@
             </section>
             </div>
 
-            <div id="section-3" class="section-content" style="display: none;">
-                <header>
-                    <h1>Değerlendirme</h1>
-                    <p class="subtitle">Bu bölüm henüz hazırlanmadı.</p>
-                </header>
+    <div id="section-3" class="section-content" style="display: none;">
+        <section class="card" id="quiz-section">
+            <h2><i class="fas fa-clipboard-check"></i> 3. Değerlendirme</h2>
+
+            <div id="quiz-container">
+                <div id="quiz-progress-bar"></div>
+                <div id="quiz-instruction">Yükleniyor...</div>
+                <div id="quiz-question-area"></div>
+                <div id="quiz-feedback" class="tutorial-feedback"></div>
+                <button id="quiz-next-btn" style="display: none;">Devam Et <i class="fas fa-arrow-right"></i></button>
+                <div style="clear: both;"></div>
             </div>
-        </div>
+
+            <p>Bu bölümde öğrendiklerinizi serbest çizimle uygulayın.</p>
+
+            <!-- lab-shell will be moved here dynamically -->
+            <div id="quiz-lab-placeholder"></div>
+        </section>
+    </div>
     </main>
     <script src="script.js"></script>
     <script src="tutorial2.js"></script>
+    <script src="quiz2.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             // Initialize Tutorial for Section 2
-            const tutorial = new Tutorial2Manager();
+            window.tutorial = new Tutorial2Manager();
+            window.quiz = null;
+            // Start on Section 1
+            showSection(1);
         });
 
         function showSection(sectionId) {
@@ -1041,10 +1279,59 @@
             // Scroll to top
             document.getElementById('content-area').scrollTop = 0;
 
-            // If switching to Section 2 (Application), update SVG dimensions
+            // Handle Lab Shell Movement and Manager Activation
+            const labShell = document.querySelector('.lab-shell');
+            const sec2Container = document.querySelector('#uygulama-2');
+            const sec3Container = document.querySelector('#quiz-lab-placeholder');
+
             if (sectionId === 2) {
+                // Move lab shell to Section 2
+                if (labShell && sec2Container && !sec2Container.contains(labShell)) {
+                    // Insert after the paragraph
+                    const p = sec2Container.querySelector('p');
+                    sec2Container.insertBefore(labShell, p.nextSibling);
+                }
+                
+                // Activate Tutorial, Deactivate Quiz
+                if (window.tutorial) window.tutorial.isActive = true;
+                if (window.quiz) window.quiz.isActive = false;
+                
+                // Reset View
                 if (typeof updateViewBox === 'function') setTimeout(updateViewBox, 50);
+
+            } else if (sectionId === 3) {
+                // Move lab shell to Section 3
+                if (labShell && sec3Container && !sec3Container.contains(labShell)) {
+                    sec3Container.appendChild(labShell);
+                }
+                
+                // Initialize Quiz if not exists
+                if (!window.quiz && typeof Quiz2Manager !== 'undefined') {
+                    window.quiz = new Quiz2Manager();
+                }
+                
+                // Activate Quiz, Deactivate Tutorial
+                if (window.tutorial) window.tutorial.isActive = false;
+                if (window.quiz) {
+                    window.quiz.isActive = true;
+                    window.quiz.startQuiz();
+                }
+
+                // Reset View
+                if (typeof updateViewBox === 'function') setTimeout(updateViewBox, 50);
+            } else {
+                // Deactivate both
+                if (window.tutorial) window.tutorial.isActive = false;
+                if (window.quiz) window.quiz.isActive = false;
             }
+        }
+    </script>
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('visible');
         }
     </script>
 </body>

@@ -2,13 +2,30 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Lazer Işıklı Koordinat Düzlemi</title>
     <!-- Font Awesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- Portrait Mode Overlay -->
+    <div id="portrait-overlay">
+        <div class="rotate-icon">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M16.48 2.52c3.27 1.55 5.61 4.72 5.97 8.48h1.5C23.44 4.84 18.29 0 12 0l-.66.03 3.81 3.81 1.33-1.32zm-6.25-.77c-.59-.59-1.54-.59-2.12 0L1.75 8.11c-.59.59-.59 1.54 0 2.12l12.02 12.02c.59.59 1.54.59 2.12 0l6.36-6.36c.59-.59.59-1.54 0-2.12L10.23 1.75zm4.6 19.44L2.81 9.17l6.36-6.36 12.02 12.02-6.36 6.36zm-7.31.29C4.25 19.94 1.91 16.76 1.55 13H.05C.56 19.16 5.71 24 12 24l.66-.03-3.81-3.81-1.33 1.32z"/>
+            </svg>
+        </div>
+        <h2>Cihazınızı Çevirin</h2>
+        <p>Bu uygulama yatay modda çalışmaktadır. Lütfen cihazınızı yatay konuma getirin.</p>
+    </div>
+
+    <!-- Hamburger Button for Mobile -->
+    <button id="hamburger-btn-main" aria-label="Menü">
+        <span></span><span></span><span></span>
+    </button>
+    <div id="sidebar-overlay-main"></div>
+
     <div id="app">
         <aside id="sidebar">
             <h2><i class="fa-solid fa-laser"></i> Koordinat Düzlemi</h2>
@@ -19,7 +36,7 @@
                 <button id="mode-app1" onclick="window.location.href='uygulama1.html'"><i class="fa-solid fa-book-open"></i> Uygulama 1</button>
                 <button id="mode-app2" onclick="window.location.href='uygulama2.html'"><i class="fa-solid fa-pencil-ruler"></i> Uygulama 2</button>
                 <button id="mode-app3" onclick="window.location.href='uygulama3.html'"><i class="fa-solid fa-pencil-ruler"></i> Uygulama 3</button>
-                <button id="mode-app4" onclick="window.location.href='uygulama4.html'"><i class="fa-solid fa-pencil-ruler"></i> Uygulama 4</button>
+                <button id="mode-app4" onclick="window.location.href='uygulama4.html'"><i class="fa-solid fa-pencil-ruler"></i> Derinleştirme</button>
             </div>
             
             <hr>
@@ -39,14 +56,12 @@
                 <button id="tool-unit-circle"><i class="fa-solid fa-ring"></i> Birim Çember</button>
                 
                 <h3>Düzenleme</h3>
+                <button id="tool-copy"><i class="fa-solid fa-copy"></i> Kopyala</button>
                 <button id="tool-delete"><i class="fa-solid fa-trash-can"></i> Sil</button>
                 <button id="tool-clear"><i class="fa-solid fa-eraser"></i> Temizle</button>
             </div>
             
-            <div id="info-panel">
-                <p id="cursor-pos">x: 0, y: 0</p>
-                <div id="selection-info"></div>
-            </div>
+
         </aside>
         
         <main id="canvas-container">
@@ -62,5 +77,32 @@
     </div>
 
     <script src="script.js"></script>
+    <script>
+        // Hamburger menu toggle for mobile
+        (function() {
+            const hamburger = document.getElementById('hamburger-btn-main');
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay-main');
+            if (hamburger && sidebar && overlay) {
+                hamburger.addEventListener('click', function() {
+                    sidebar.classList.toggle('open');
+                    overlay.classList.toggle('visible');
+                });
+                overlay.addEventListener('click', function() {
+                    sidebar.classList.remove('open');
+                    overlay.classList.remove('visible');
+                });
+                // Close sidebar when a tool is selected on mobile
+                document.querySelectorAll('#tools-panel button, .mode-selector button').forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        if (window.innerHeight < 500 || window.innerWidth < 768) {
+                            sidebar.classList.remove('open');
+                            overlay.classList.remove('visible');
+                        }
+                    });
+                });
+            }
+        })();
+    </script>
 </body>
 </html>

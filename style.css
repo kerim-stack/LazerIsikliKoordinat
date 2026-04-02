@@ -233,6 +233,11 @@ svg {
     stroke-linecap: round;
     vector-effect: non-scaling-stroke;
     cursor: grab;
+    touch-action: none;
+}
+
+.handle-hit-area {
+    touch-action: none;
 }
 
 .handle:active {
@@ -246,4 +251,208 @@ svg {
     border-top: 1px solid rgba(0,0,0,0.05);
     font-size: 0.85rem;
     color: var(--text-light);
+}
+
+/* ==========================================
+   PORTRAIT ROTATION OVERLAY
+   ========================================== */
+#portrait-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    background: linear-gradient(135deg, #4361ee 0%, #3f37c9 100%);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    text-align: center;
+    padding: 40px;
+}
+
+#portrait-overlay .rotate-icon {
+    width: 100px;
+    height: 100px;
+    margin-bottom: 30px;
+    animation: rotatePhone 2s ease-in-out infinite;
+}
+
+#portrait-overlay .rotate-icon svg {
+    width: 100%;
+    height: 100%;
+    fill: white;
+}
+
+#portrait-overlay h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: white;
+}
+
+#portrait-overlay p {
+    font-size: 1rem;
+    opacity: 0.85;
+    max-width: 300px;
+    line-height: 1.6;
+}
+
+@keyframes rotatePhone {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-30deg); }
+    75% { transform: rotate(90deg); }
+}
+
+@media (orientation: portrait) and (max-width: 1024px) {
+    #portrait-overlay {
+        display: flex !important;
+    }
+    #app, #content-area, #sidebar, #hamburger-btn, #sidebar-overlay {
+        display: none !important;
+    }
+}
+
+@media (orientation: landscape), (min-width: 1025px) {
+    #portrait-overlay {
+        display: none !important;
+    }
+}
+
+/* ==========================================
+   MOBILE RESPONSIVE - LANDSCAPE
+   ========================================== */
+
+/* Hamburger button for index.html on small landscape screens */
+#hamburger-btn-main {
+    display: none;
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 101;
+    background: white;
+    border: 1px solid rgba(0,0,0,0.1);
+    border-radius: 10px;
+    width: 38px;
+    height: 38px;
+    cursor: pointer;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: all 0.2s;
+    padding: 0;
+}
+
+#hamburger-btn-main span {
+    display: block;
+    width: 18px;
+    height: 2px;
+    background: var(--text-color);
+    border-radius: 2px;
+    transition: all 0.2s;
+}
+
+#hamburger-btn-main:hover {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+#hamburger-btn-main:hover span {
+    background: white;
+}
+
+#sidebar-overlay-main {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    z-index: 9;
+}
+
+#sidebar-overlay-main.visible {
+    display: block;
+}
+
+@media (max-height: 500px), (max-width: 768px) {
+    #hamburger-btn-main {
+        display: flex;
+    }
+
+    #sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        z-index: 100;
+        box-shadow: 4px 0 24px rgba(0,0,0,0.15);
+        transform: translateX(calc(-1 * var(--sidebar-width)));
+        transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+
+    #sidebar.open {
+        transform: translateX(0);
+    }
+
+    #canvas-container {
+        width: 100%;
+    }
+
+    #sidebar h3 {
+        margin-top: 8px;
+        margin-bottom: 4px;
+        font-size: 0.75rem;
+    }
+
+    #sidebar button {
+        padding: 8px 12px;
+        margin-bottom: 3px;
+        font-size: 0.85rem;
+        gap: 8px;
+    }
+
+    #sidebar h2 {
+        font-size: 1rem;
+        margin-bottom: 6px;
+    }
+
+    #sidebar {
+        padding: 16px;
+        gap: 4px;
+    }
+
+    hr {
+        margin: 8px 0;
+    }
+}
+
+/* Touch-friendly: larger tap targets */
+@media (pointer: coarse) {
+    button {
+        min-height: 44px;
+    }
+
+    .handle {
+        stroke-width: 28px;
+    }
+
+    .handle-hit-area {
+        pointer-events: all !important;
+    }
+
+    .point {
+        stroke-width: 14px;
+    }
+
+    .polygon-vertex {
+        stroke-width: 14px;
+    }
+
+    .selectable {
+        cursor: pointer;
+    }
+
+    svg {
+        touch-action: none;
+    }
 }
