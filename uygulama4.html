@@ -747,15 +747,19 @@
         }
 
         #fullscreen-btn {
+            display: none;
             position: fixed; top: 16px; right: 16px; z-index: 101;
             background: white; border: 1px solid rgba(0,0,0,0.1);
             border-radius: 10px; width: 42px; height: 42px;
-            cursor: pointer; display: flex; align-items: center;
+            cursor: pointer; align-items: center;
             justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             transition: all 0.2s; font-size: 16px; color: #333;
         }
         #fullscreen-btn:hover, #fullscreen-btn:active {
             background: var(--primary-color); border-color: var(--primary-color); color: white;
+        }
+        @media (max-width: 768px) {
+            #fullscreen-btn { display: flex; }
         }
 
         /* Touch-friendly targets */
