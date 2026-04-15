@@ -410,24 +410,28 @@ function getSnappedAngle(currentAngle, obj) {
 // RENDER VE UI YARDIMCILARI
 // ==========================================
 
+// getBoundingClientRect() is 100% reliable on mobile (getScreenCTM is not)
+function touchToSVG(clientX, clientY) {
+    const rect = svg.getBoundingClientRect();
+    return {
+        x: state.viewX + (clientX - rect.left) * (state.viewWidth / rect.width),
+        y: state.viewY + (clientY - rect.top) * (state.viewHeight / rect.height)
+    };
+}
+
 function getMousePosition(evt) {
+    if (evt.touches && evt.touches.length > 0) {
+        return touchToSVG(evt.touches[0].clientX, evt.touches[0].clientY);
+    }
+    if (evt.changedTouches && evt.changedTouches.length > 0) {
+        return touchToSVG(evt.changedTouches[0].clientX, evt.changedTouches[0].clientY);
+    }
+    // Mouse events only: getScreenCTM is reliable on desktop
     const CTM = svg.getScreenCTM();
     if (!CTM) return { x: 0, y: 0 };
-    // Support touch events
-    let clientX, clientY;
-    if (evt.touches && evt.touches.length > 0) {
-        clientX = evt.touches[0].clientX;
-        clientY = evt.touches[0].clientY;
-    } else if (evt.changedTouches && evt.changedTouches.length > 0) {
-        clientX = evt.changedTouches[0].clientX;
-        clientY = evt.changedTouches[0].clientY;
-    } else {
-        clientX = evt.clientX;
-        clientY = evt.clientY;
-    }
     return {
-        x: (clientX - CTM.e) / CTM.a,
-        y: (clientY - CTM.f) / CTM.d
+        x: (evt.clientX - CTM.e) / CTM.a,
+        y: (evt.clientY - CTM.f) / CTM.d
     };
 }
 
@@ -759,6 +763,101 @@ class Polygon {
 // RENDER VE UI GÜNCELLEME
 // ==========================================
 
+// Lightweight rotation update for touch — avoids destroying UI elements
+// This is critical: renderObjects→renderUI rebuilds DOM, killing the touch target
+function touchRotateLaser(clientX, clientY) {
+    const obj = state.selectedObject;
+    const pivot = state.rotatePivot;
+    if (!obj || obj.type !== 'laser' || !pivot) return;
+    
+    const pt = touchToSVG(clientX, clientY);
+    let angle = Math.atan2(pt.y - pivot.y, pt.x - pivot.x);
+    angle = getSnappedAngle(angle, obj);
+    obj.angle = angle;
+    obj.x = pivot.x - Math.cos(angle) * (obj.size / 2);
+    obj.y = pivot.y - Math.sin(angle) * (obj.size / 2);
+    
+    // Re-render objects layer only (laser beam, reflections etc)
+    objectsLayer.innerHTML = '';
+    state.objects.forEach(o => objectsLayer.appendChild(o.render()));
+    
+    // Update handle positions in-place — do NOT rebuild uiLayer
+    const handleDist = obj.size * 2.5;
+    const hx = obj.x + handleDist * Math.cos(obj.angle);
+    const hy = obj.y + handleDist * Math.sin(obj.angle);
+    
+    const hitArea = uiLayer.querySelector('.handle-hit-area');
+    if (hitArea) { hitArea.setAttribute('cx', hx); hitArea.setAttribute('cy', hy); }
+    
+    const handle = uiLayer.querySelector('.handle');
+    if (handle) {
+        handle.setAttribute('x1', hx); handle.setAttribute('y1', hy);
+        handle.setAttribute('x2', hx); handle.setAttribute('y2', hy);
+    }
+    
+    // Update dashed line (first line child with stroke-dasharray)
+    const lines = uiLayer.querySelectorAll('line');
+    for (const ln of lines) {
+        if (ln.getAttribute('stroke-dasharray')) {
+            ln.setAttribute('x1', obj.x); ln.setAttribute('y1', obj.y);
+            ln.setAttribute('x2', hx); ln.setAttribute('y2', hy);
+            break;
+        }
+    }
+    
+    // Update selected-outline circle
+    const outline = uiLayer.querySelector('.selected-outline');
+    if (outline) { outline.setAttribute('cx', obj.x); outline.setAttribute('cy', obj.y); }
+}
+
+// Lightweight circle resize update for touch — same approach as touchRotateLaser
+function touchResizeCircle(clientX, clientY) {
+    const obj = state.selectedObject;
+    if (!obj || obj.type !== 'circle') return;
+
+    const pt = touchToSVG(clientX, clientY);
+    const newR = Math.hypot(pt.x - obj.x, pt.y - obj.y);
+    if (newR < 0.1) return;
+    obj.r = newR;
+
+    // Re-render objects layer only
+    objectsLayer.innerHTML = '';
+    state.objects.forEach(o => objectsLayer.appendChild(o.render()));
+
+    // Update handle and outline in-place
+    const hx = obj.x + obj.r;
+    const hy = obj.y;
+    const handle = uiLayer.querySelector('.handle[data-action="resize"]');
+    if (handle) {
+        handle.setAttribute('x1', hx); handle.setAttribute('y1', hy);
+        handle.setAttribute('x2', hx); handle.setAttribute('y2', hy);
+    }
+    const outline = uiLayer.querySelector('.selected-outline');
+    if (outline) { outline.setAttribute('r', obj.r); }
+}
+
+// Lightweight parabola resize update for touch
+function touchResizeParabola(clientX, clientY) {
+    const obj = state.selectedObject;
+    if (!obj || obj.type !== 'parabola') return;
+
+    const pt = touchToSVG(clientX, clientY);
+    obj.a = obj.y - pt.y;
+
+    // Re-render objects layer only
+    objectsLayer.innerHTML = '';
+    state.objects.forEach(o => objectsLayer.appendChild(o.render()));
+
+    // Update handle position in-place
+    const hx = obj.x + 1;
+    const hy = obj.y - obj.a;
+    const handle = uiLayer.querySelector('.handle[data-action="resize-parabola"]');
+    if (handle) {
+        handle.setAttribute('x1', hx); handle.setAttribute('y1', hy);
+        handle.setAttribute('x2', hx); handle.setAttribute('y2', hy);
+    }
+}
+
 function renderObjects() {
     objectsLayer.innerHTML = '';
     state.objects.forEach(obj => objectsLayer.appendChild(obj.render()));
@@ -814,28 +913,42 @@ function renderUI() {
             'pointer-events': 'all',
             class: 'handle-hit-area', 'data-action': 'rotate', cursor: 'grab'
         });
-        // DIRECT touch listener on hit area — uses startTouchRotation for reliable screen-space rotation
         hitArea.addEventListener('touchstart', function(te) {
             te.stopPropagation();
             te.preventDefault();
             if (te.touches.length !== 1) return;
             const currentObj = state.selectedObject;
             if (!currentObj || currentObj.type !== 'laser') return;
-            startTouchRotation(currentObj);
+            state.isDragging = true;
+            state.dragAction = 'rotate';
+            const pt = touchToSVG(te.touches[0].clientX, te.touches[0].clientY);
+            state.dragStartX = pt.x;
+            state.dragStartY = pt.y;
+            state.rotatePivot = {
+                x: currentObj.x + Math.cos(currentObj.angle) * (currentObj.size / 2),
+                y: currentObj.y + Math.sin(currentObj.angle) * (currentObj.size / 2)
+            };
         }, { passive: false });
         uiLayer.appendChild(hitArea);
         // Visible handle dot
         const handleDot = createSVGElement('line', {
             x1: hx, y1: hy, x2: hx, y2: hy, class: 'handle', 'data-action': 'rotate'
         });
-        // DIRECT touch listener on visible handle dot too
         handleDot.addEventListener('touchstart', function(te) {
             te.stopPropagation();
             te.preventDefault();
             if (te.touches.length !== 1) return;
             const currentObj = state.selectedObject;
             if (!currentObj || currentObj.type !== 'laser') return;
-            startTouchRotation(currentObj);
+            state.isDragging = true;
+            state.dragAction = 'rotate';
+            const pt = touchToSVG(te.touches[0].clientX, te.touches[0].clientY);
+            state.dragStartX = pt.x;
+            state.dragStartY = pt.y;
+            state.rotatePivot = {
+                x: currentObj.x + Math.cos(currentObj.angle) * (currentObj.size / 2),
+                y: currentObj.y + Math.sin(currentObj.angle) * (currentObj.size / 2)
+            };
         }, { passive: false });
         uiLayer.appendChild(handleDot);
         uiLayer.appendChild(createSVGElement('circle', {
@@ -844,18 +957,36 @@ function renderUI() {
     } else if (obj.type === 'circle') {
         const hx = obj.x + obj.r;
         const hy = obj.y;
-        uiLayer.appendChild(createSVGElement('line', {
+        const circleHandle = createSVGElement('line', {
             x1: hx, y1: hy, x2: hx, y2: hy, class: 'handle', 'data-action': 'resize'
-        }));
+        });
+        circleHandle.addEventListener('touchstart', function(te) {
+            te.stopPropagation();
+            te.preventDefault();
+            if (te.touches.length !== 1) return;
+            if (!state.selectedObject || state.selectedObject.type !== 'circle') return;
+            state.isDragging = true;
+            state.dragAction = 'resize';
+        }, { passive: false });
+        uiLayer.appendChild(circleHandle);
         uiLayer.appendChild(createSVGElement('circle', {
             cx: obj.x, cy: obj.y, r: obj.r, class: 'selected-outline'
         }));
     } else if (obj.type === 'parabola') {
         const hx = obj.x + 1;
         const hy = obj.y - obj.a;
-        uiLayer.appendChild(createSVGElement('line', {
+        const parabolaHandle = createSVGElement('line', {
             x1: hx, y1: hy, x2: hx, y2: hy, class: 'handle', 'data-action': 'resize-parabola'
-        }));
+        });
+        parabolaHandle.addEventListener('touchstart', function(te) {
+            te.stopPropagation();
+            te.preventDefault();
+            if (te.touches.length !== 1) return;
+            if (!state.selectedObject || state.selectedObject.type !== 'parabola') return;
+            state.isDragging = true;
+            state.dragAction = 'resize-parabola';
+        }, { passive: false });
+        uiLayer.appendChild(parabolaHandle);
         uiLayer.appendChild(createSVGElement('circle', {
             cx: obj.x, cy: obj.y, r: uiMarkerSize, class: 'selected-outline'
         }));
@@ -1290,46 +1421,11 @@ window.addEventListener('mouseup', () => {
 // Pinch-to-zoom state
 let touchState = {
     lastPinchDist: 0,
-    isPinching: false,
-    // Screen-space pivot for touch rotation (saved once at drag start, never recalculated)
-    pivotScreenX: 0,
-    pivotScreenY: 0,
-    isRotating: false
+    isPinching: false
 };
 
 function getTouchDistance(t1, t2) {
     return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
-}
-
-// Start touch rotation: saves pivot in SCREEN coords (called once, never recalculated)
-function startTouchRotation(obj) {
-    const CTM = svg.getScreenCTM();
-    if (!CTM) return false;
-    const tipX = obj.x + Math.cos(obj.angle) * (obj.size / 2);
-    const tipY = obj.y + Math.sin(obj.angle) * (obj.size / 2);
-    // Convert pivot to screen coordinates ONCE
-    touchState.pivotScreenX = CTM.e + CTM.a * tipX;
-    touchState.pivotScreenY = CTM.f + CTM.d * tipY;
-    touchState.isRotating = true;
-    state.isDragging = true;
-    state.dragAction = 'rotate';
-    state.rotatePivot = { x: tipX, y: tipY };
-    return true;
-}
-
-// Process touch rotation using screen coordinates (no getScreenCTM per frame)
-function processTouchRotation(touchClientX, touchClientY) {
-    const obj = state.selectedObject;
-    const pivot = state.rotatePivot;
-    if (!obj || obj.type !== 'laser' || !pivot) return;
-    // Compute angle in screen space (uniform scaling means screen angle = SVG angle)
-    let angle = Math.atan2(touchClientY - touchState.pivotScreenY, touchClientX - touchState.pivotScreenX);
-    angle = getSnappedAngle(angle, obj);
-    obj.angle = angle;
-    obj.x = pivot.x - Math.cos(angle) * (obj.size / 2);
-    obj.y = pivot.y - Math.sin(angle) * (obj.size / 2);
-    renderObjects();
-    renderUI();
 }
 
 svg.addEventListener('touchstart', e => {
@@ -1349,34 +1445,46 @@ svg.addEventListener('touchstart', e => {
     // DIRECT touch rotation/resize handle detection — pure coordinate math, no elementFromPoint
     // This is the PRIMARY method for touch handle detection (elementFromPoint is unreliable on mobile)
     if (state.selectedObject && state.selectedTool === 'move') {
-        const CTM = svg.getScreenCTM();
-        if (CTM) {
-            const svgX = (touch.clientX - CTM.e) / CTM.a;
-            const svgY = (touch.clientY - CTM.f) / CTM.d;
-            const obj = state.selectedObject;
+        const { x: svgX, y: svgY } = touchToSVG(touch.clientX, touch.clientY);
+        const obj = state.selectedObject;
 
-            if (obj.type === 'laser') {
-                const handleDist = obj.size * 2.5;
-                const hx = obj.x + handleDist * Math.cos(obj.angle);
-                const hy = obj.y + handleDist * Math.sin(obj.angle);
-                const distToHandle = Math.hypot(svgX - hx, svgY - hy);
-                const distToCenter = Math.hypot(svgX - obj.x, svgY - obj.y);
-                // Touch closer to handle than to laser center → rotate
-                if (distToHandle < Math.max(2, state.viewWidth * 0.12) && distToHandle < distToCenter) {
-                    startTouchRotation(obj);
-                    return; // Do NOT call handlePointerDown
-                }
-            } else if (obj.type === 'circle') {
-                const hx = obj.x + obj.r;
-                const hy = obj.y;
-                const distToHandle = Math.hypot(svgX - hx, svgY - hy);
-                if (distToHandle < Math.max(1, state.viewWidth * 0.08)) {
-                    state.isDragging = true;
-                    state.dragAction = 'resize';
-                    state.dragStartX = svgX;
-                    state.dragStartY = svgY;
-                    return;
-                }
+        if (obj.type === 'laser') {
+            const handleDist = obj.size * 2.5;
+            const hx = obj.x + handleDist * Math.cos(obj.angle);
+            const hy = obj.y + handleDist * Math.sin(obj.angle);
+            const distToHandle = Math.hypot(svgX - hx, svgY - hy);
+            const distToCenter = Math.hypot(svgX - obj.x, svgY - obj.y);
+            if (distToHandle < Math.max(2, state.viewWidth * 0.12) && distToHandle < distToCenter) {
+                state.isDragging = true;
+                state.dragAction = 'rotate';
+                state.dragStartX = svgX;
+                state.dragStartY = svgY;
+                const tipX = obj.x + Math.cos(obj.angle) * (obj.size / 2);
+                const tipY = obj.y + Math.sin(obj.angle) * (obj.size / 2);
+                state.rotatePivot = { x: tipX, y: tipY };
+                return;
+            }
+        } else if (obj.type === 'circle') {
+            const hx = obj.x + obj.r;
+            const hy = obj.y;
+            const distToHandle = Math.hypot(svgX - hx, svgY - hy);
+            if (distToHandle < Math.max(1, state.viewWidth * 0.08)) {
+                state.isDragging = true;
+                state.dragAction = 'resize';
+                state.dragStartX = svgX;
+                state.dragStartY = svgY;
+                return;
+            }
+        } else if (obj.type === 'parabola') {
+            const hx = obj.x + 1;
+            const hy = obj.y - obj.a;
+            const distToHandle = Math.hypot(svgX - hx, svgY - hy);
+            if (distToHandle < Math.max(1, state.viewWidth * 0.08)) {
+                state.isDragging = true;
+                state.dragAction = 'resize-parabola';
+                state.dragStartX = svgX;
+                state.dragStartY = svgY;
+                return;
             }
         }
     }
@@ -1426,10 +1534,17 @@ svg.addEventListener('touchmove', e => {
 
     if (e.touches.length !== 1) return;
 
-    // DIRECT touch rotation — bypass handlePointerMove entirely
-    // Uses screen-space coords saved at drag start (no getScreenCTM per frame)
-    if (touchState.isRotating && state.isDragging && state.dragAction === 'rotate') {
-        processTouchRotation(e.touches[0].clientX, e.touches[0].clientY);
+    // Touch rotation/resize: lightweight update, NO DOM rebuild
+    if (state.isDragging && state.dragAction === 'rotate') {
+        touchRotateLaser(e.touches[0].clientX, e.touches[0].clientY);
+        return;
+    }
+    if (state.isDragging && state.dragAction === 'resize') {
+        touchResizeCircle(e.touches[0].clientX, e.touches[0].clientY);
+        return;
+    }
+    if (state.isDragging && state.dragAction === 'resize-parabola') {
+        touchResizeParabola(e.touches[0].clientX, e.touches[0].clientY);
         return;
     }
 
@@ -1458,10 +1573,13 @@ svg.addEventListener('touchend', e => {
         return;
     }
 
+    const wasRotating = state.dragAction === 'rotate';
+    const wasResizing = state.dragAction === 'resize' || state.dragAction === 'resize-parabola';
     state.isDragging = false;
     state.dragAction = null;
     state.rotatePivot = null;
-    touchState.isRotating = false;
+    // Full rebuild after rotation/resize ends to restore proper UI with touch listeners
+    if (wasRotating || wasResizing) renderObjects();
 }, { passive: false });
 
 svg.addEventListener('touchcancel', () => {
@@ -1470,24 +1588,33 @@ svg.addEventListener('touchcancel', () => {
     state.isDragging = false;
     state.dragAction = null;
     state.rotatePivot = null;
-    touchState.isRotating = false;
 });
 
 // Document-level touch handlers — safety net for when touch starts on handle elements
 // (touchmove/touchend might not bubble to SVG on some mobile browsers)
 document.addEventListener('touchmove', e => {
-    if (!touchState.isRotating || !state.isDragging || state.dragAction !== 'rotate') return;
+    if (!state.isDragging) return;
     if (!e.touches || e.touches.length !== 1) return;
-    e.preventDefault();
-    processTouchRotation(e.touches[0].clientX, e.touches[0].clientY);
+    if (state.dragAction === 'rotate') {
+        e.preventDefault();
+        touchRotateLaser(e.touches[0].clientX, e.touches[0].clientY);
+    } else if (state.dragAction === 'resize') {
+        e.preventDefault();
+        touchResizeCircle(e.touches[0].clientX, e.touches[0].clientY);
+    } else if (state.dragAction === 'resize-parabola') {
+        e.preventDefault();
+        touchResizeParabola(e.touches[0].clientX, e.touches[0].clientY);
+    }
 }, { passive: false });
 
 document.addEventListener('touchend', e => {
     if (!state.isDragging) return;
+    const wasRotating = state.dragAction === 'rotate';
+    const wasResizing = state.dragAction === 'resize' || state.dragAction === 'resize-parabola';
     state.isDragging = false;
     state.dragAction = null;
     state.rotatePivot = null;
-    touchState.isRotating = false;
+    if (wasRotating || wasResizing) renderObjects();
 }, { passive: false });
 
 // UI Event Listeners
