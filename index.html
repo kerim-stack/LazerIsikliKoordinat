@@ -24,6 +24,7 @@
     <button id="hamburger-btn-main" aria-label="Menü">
         <span></span><span></span><span></span>
     </button>
+    <button id="fullscreen-btn" aria-label="Tam Ekran"><i class="fa-solid fa-expand"></i></button>
     <div id="sidebar-overlay-main"></div>
 
     <div id="app">
@@ -103,6 +104,23 @@
                 });
             }
         })();
+        // Fullscreen button (mobile only)
+        (function() {
+            const fsBtn = document.getElementById('fullscreen-btn');
+            if (!fsBtn) return;
+            fsBtn.addEventListener('click', function() {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen && document.documentElement.requestFullscreen();
+                } else {
+                    document.exitFullscreen && document.exitFullscreen();
+                }
+            });
+            document.addEventListener('fullscreenchange', function() {
+                const icon = fsBtn.querySelector('i');
+                if (icon) {
+                    icon.className = document.fullscreenElement ? 'fa-solid fa-compress' : 'fa-solid fa-expand';
+                }
+            });
+        })();
     </script>
-</body>
 </html>

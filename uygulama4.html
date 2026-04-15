@@ -746,6 +746,18 @@
             #portrait-overlay { display: none !important; }
         }
 
+        #fullscreen-btn {
+            position: fixed; top: 16px; right: 16px; z-index: 101;
+            background: white; border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 10px; width: 42px; height: 42px;
+            cursor: pointer; display: flex; align-items: center;
+            justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.2s; font-size: 16px; color: #333;
+        }
+        #fullscreen-btn:hover, #fullscreen-btn:active {
+            background: var(--primary-color); border-color: var(--primary-color); color: white;
+        }
+
         /* Touch-friendly targets */
         @media (pointer: coarse) {
             .nav-btn { min-height: 44px; }
@@ -768,8 +780,7 @@
         <h2>Cihazınızı Çevirin</h2>
         <p>Bu uygulama yatay modda çalışmaktadır. Lütfen cihazınızı yatay konuma getirin.</p>
     </div>
-
-    <!-- Sidebar Navigation -->
+    <button id="fullscreen-btn" aria-label="Tam Ekran"><i class="fa-solid fa-expand"></i></button>
     <aside id="sidebar">
         <div class="brand">
             <i class="fas fa-shapes"></i>
@@ -893,6 +904,23 @@
             document.getElementById('btn-section-' + sectionId).classList.add('active');
             document.getElementById('content-area').scrollTop = 0;
         }
+    </script>
+    <script>
+        (function() {
+            var fsBtn = document.getElementById('fullscreen-btn');
+            if (!fsBtn) return;
+            fsBtn.addEventListener('click', function() {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen && document.documentElement.requestFullscreen();
+                } else {
+                    document.exitFullscreen && document.exitFullscreen();
+                }
+            });
+            document.addEventListener('fullscreenchange', function() {
+                var icon = fsBtn.querySelector('i');
+                if (icon) icon.className = document.fullscreenElement ? 'fa-solid fa-compress' : 'fa-solid fa-expand';
+            });
+        })();
     </script>
 </body>
 </html>
