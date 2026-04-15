@@ -805,9 +805,11 @@ function touchRotateLaser(clientX, clientY) {
         }
     }
     
-    // Update selected-outline circle
+    // Update selected-outline and move hit area
     const outline = uiLayer.querySelector('.selected-outline');
     if (outline) { outline.setAttribute('cx', obj.x); outline.setAttribute('cy', obj.y); }
+    const moveArea = uiLayer.querySelector('.laser-move-area');
+    if (moveArea) { moveArea.setAttribute('cx', obj.x); moveArea.setAttribute('cy', obj.y); }
 }
 
 // Lightweight circle resize update for touch — same approach as touchRotateLaser
@@ -858,6 +860,102 @@ function touchResizeParabola(clientX, clientY) {
     }
 }
 
+// Geometric distance from point to a finite line segment
+function pointToSegmentDist(px, py, x1, y1, x2, y2) {
+    const dx = x2 - x1, dy = y2 - y1;
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq < 1e-12) return Math.hypot(px - x1, py - y1);
+    const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / lenSq));
+    return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+}
+
+// Geometric object finder — used when elementFromPoint is unreliable on mobile
+function findObjectAtPoint(pt) {
+    const threshold = state.viewWidth * 0.12;
+    let bestObj = null, bestDist = threshold;
+    for (const obj of state.objects) {
+        let dist = Infinity;
+        if (obj.type === 'point' || obj.type === 'laser' || obj.type === 'parabola') {
+            dist = Math.hypot(pt.x - obj.x, pt.y - obj.y);
+        } else if (obj.type === 'circle') {
+            dist = Math.abs(Math.hypot(pt.x - obj.x, pt.y - obj.y) - obj.r);
+        } else if (obj.type === 'line') {
+            const dx = obj.x2 - obj.x1, dy = obj.y2 - obj.y1;
+            const len = Math.hypot(dx, dy);
+            dist = len < 1e-6 ? Math.hypot(pt.x - obj.x1, pt.y - obj.y1)
+                              : Math.abs((pt.x - obj.x1) * dy - (pt.y - obj.y1) * dx) / len;
+        } else if (obj.type === 'polygon') {
+            const pts = obj.points;
+            const edgeCount = obj.isClosed ? pts.length : pts.length - 1;
+            for (let i = 0; i < edgeCount; i++) {
+                const p1 = pts[i], p2 = pts[(i + 1) % pts.length];
+                dist = Math.min(dist, pointToSegmentDist(pt.x, pt.y, p1.x, p1.y, p2.x, p2.y));
+            }
+        }
+        if (dist < bestDist) { bestDist = dist; bestObj = obj; }
+    }
+    return bestObj;
+}
+
+// Lightweight object move for touch — avoids rebuilding uiLayer each frame
+function touchMoveObject(clientX, clientY) {
+    const obj = state.selectedObject;
+    if (!obj) return;
+    const pt = touchToSVG(clientX, clientY);
+    const dx = pt.x - state.dragStartX;
+    const dy = pt.y - state.dragStartY;
+    state.dragStartX = pt.x;
+    state.dragStartY = pt.y;
+
+    if (obj.type === 'polygon') {
+        obj.points.forEach(p => { p.x += dx; p.y += dy; });
+    } else if (obj.type === 'line') {
+        obj.x1 += dx; obj.y1 += dy; obj.x2 += dx; obj.y2 += dy;
+    } else {
+        obj.x += dx; obj.y += dy;
+    }
+
+    // Rebuild objects layer only
+    objectsLayer.innerHTML = '';
+    state.objects.forEach(o => objectsLayer.appendChild(o.render()));
+
+    // Update uiLayer handles in-place (no DOM rebuild = no lost touch targets)
+    const outline = uiLayer.querySelector('.selected-outline');
+    if (obj.type === 'laser') {
+        const handleDist = obj.size * 2.5;
+        const hx = obj.x + handleDist * Math.cos(obj.angle);
+        const hy = obj.y + handleDist * Math.sin(obj.angle);
+        const hitArea = uiLayer.querySelector('.handle-hit-area');
+        if (hitArea) { hitArea.setAttribute('cx', hx); hitArea.setAttribute('cy', hy); }
+        const handle = uiLayer.querySelector('.handle');
+        if (handle) { handle.setAttribute('x1', hx); handle.setAttribute('y1', hy); handle.setAttribute('x2', hx); handle.setAttribute('y2', hy); }
+        const uiLines = uiLayer.querySelectorAll('line');
+        for (const ln of uiLines) {
+            if (ln.getAttribute('stroke-dasharray')) {
+                ln.setAttribute('x1', obj.x); ln.setAttribute('y1', obj.y);
+                ln.setAttribute('x2', hx); ln.setAttribute('y2', hy); break;
+            }
+        }
+        if (outline) { outline.setAttribute('cx', obj.x); outline.setAttribute('cy', obj.y); }
+        const moveArea = uiLayer.querySelector('.laser-move-area');
+        if (moveArea) { moveArea.setAttribute('cx', obj.x); moveArea.setAttribute('cy', obj.y); }
+    } else if (obj.type === 'circle') {
+        if (outline) { outline.setAttribute('cx', obj.x); outline.setAttribute('cy', obj.y); }
+        const handle = uiLayer.querySelector('.handle[data-action="resize"]');
+        if (handle) { handle.setAttribute('x1', obj.x + obj.r); handle.setAttribute('y1', obj.y); handle.setAttribute('x2', obj.x + obj.r); handle.setAttribute('y2', obj.y); }
+    } else if (obj.type === 'parabola') {
+        if (outline) { outline.setAttribute('cx', obj.x); outline.setAttribute('cy', obj.y); }
+        const handle = uiLayer.querySelector('.handle[data-action="resize-parabola"]');
+        if (handle) { handle.setAttribute('x1', obj.x + 1); handle.setAttribute('y1', obj.y - obj.a); handle.setAttribute('x2', obj.x + 1); handle.setAttribute('y2', obj.y - obj.a); }
+    } else if (obj.type === 'line') {
+        const h1 = uiLayer.querySelector('.handle[data-action="move-p1"]');
+        if (h1) { h1.setAttribute('x1', obj.x1); h1.setAttribute('y1', obj.y1); h1.setAttribute('x2', obj.x1); h1.setAttribute('y2', obj.y1); }
+        const h2 = uiLayer.querySelector('.handle[data-action="move-p2"]');
+        if (h2) { h2.setAttribute('x1', obj.x2); h2.setAttribute('y1', obj.y2); h2.setAttribute('x2', obj.x2); h2.setAttribute('y2', obj.y2); }
+    }
+    // point / polygon: no handles in uiLayer, nothing extra to update
+}
+
 function renderObjects() {
     objectsLayer.innerHTML = '';
     state.objects.forEach(obj => objectsLayer.appendChild(obj.render()));
@@ -905,8 +1003,10 @@ function renderUI() {
             x1: obj.x, y1: obj.y, x2: hx, y2: hy,
             stroke: '#f1c40f', 'stroke-width': '1px', 'stroke-dasharray': '4 4', 'vector-effect': 'non-scaling-stroke'
         }));
-        // Large invisible touch target — uses real SVG fill so browser hit-testing works
-        const hitAreaRadius = Math.max(2.5, state.viewWidth * 0.06);
+        // Invisible touch/mouse hit area — tight around the handle, NOT covering the laser body
+        // On touch screens, make it slightly larger (but still not overlap the laser body)
+        const isTouch = window.matchMedia('(pointer: coarse)').matches;
+        const hitAreaRadius = isTouch ? obj.size * 1.0 : obj.size * 0.65;
         const hitArea = createSVGElement('circle', {
             cx: hx, cy: hy, r: hitAreaRadius,
             fill: 'rgba(255,200,0,0.01)', stroke: 'none',
@@ -951,9 +1051,31 @@ function renderUI() {
             };
         }, { passive: false });
         uiLayer.appendChild(handleDot);
-        uiLayer.appendChild(createSVGElement('circle', {
+        // Invisible move hit area around laser body — direct touchstart for reliable mobile move
+        const moveAreaRadius = isTouch ? obj.size * 1.2 : obj.size * 0.7;
+        const moveHitArea = createSVGElement('circle', {
+            cx: obj.x, cy: obj.y, r: moveAreaRadius,
+            fill: 'rgba(0,0,0,0.01)', stroke: 'none',
+            'pointer-events': 'all',
+            class: 'laser-move-area', cursor: 'move'
+        });
+        moveHitArea.addEventListener('touchstart', function(te) {
+            te.stopPropagation();
+            te.preventDefault();
+            if (te.touches.length !== 1) return;
+            const currentObj = state.selectedObject;
+            if (!currentObj || currentObj.type !== 'laser') return;
+            state.isDragging = true;
+            state.dragAction = 'move';
+            const pt = touchToSVG(te.touches[0].clientX, te.touches[0].clientY);
+            state.dragStartX = pt.x;
+            state.dragStartY = pt.y;
+        }, { passive: false });
+        uiLayer.appendChild(moveHitArea);
+        const selOutline = createSVGElement('circle', {
             cx: obj.x, cy: obj.y, r: obj.size * 0.6, class: 'selected-outline'
-        }));
+        });
+        uiLayer.appendChild(selOutline);
     } else if (obj.type === 'circle') {
         const hx = obj.x + obj.r;
         const hy = obj.y;
@@ -1153,10 +1275,9 @@ function handlePointerDown(e) {
         const handleDist = obj.size * 2.5;
         const hx = obj.x + handleDist * Math.cos(obj.angle);
         const hy = obj.y + handleDist * Math.sin(obj.angle);
-        // Use SVG coordinate distance (more reliable than screen coords on mobile)
         const svgDist = Math.hypot(pt.x - hx, pt.y - hy);
-        // Generous threshold: 15% of viewWidth or at least 2 SVG units
-        const hitThreshold = Math.max(2, state.viewWidth * 0.15);
+        // Tight threshold — only the visible dot area
+        const hitThreshold = obj.size * 0.65;
         if (svgDist < hitThreshold) {
             isHandleHit = true;
             handleAction = 'rotate';
@@ -1262,21 +1383,27 @@ function handlePointerDown(e) {
     
     // 4. Seçim ve Taşıma
     let clickedId = target.getAttribute('data-id') || target.parentElement?.getAttribute('data-id');
-    const obj = findObjectById(clickedId);
+    let obj = findObjectById(clickedId);
+
+    // Touch fallback: elementFromPoint is unreliable on mobile SVG.
+    // Use geometric proximity search when DOM-based lookup fails.
+    if (!obj && e.touches) {
+        obj = findObjectAtPoint(pt);
+    }
     
     if (obj) {
         state.selectedObject = obj;
         state.isDragging = true;
         
-        // Touch rotation: when touching a laser, if finger is closer to handle end than body center, rotate
+        // Touch rotation: when touching a laser, if finger is close to handle dot, rotate
         if (obj.type === 'laser' && e.touches) {
             const handleDist = obj.size * 2.5;
             const hx = obj.x + handleDist * Math.cos(obj.angle);
             const hy = obj.y + handleDist * Math.sin(obj.angle);
             const distToHandle = Math.hypot(pt.x - hx, pt.y - hy);
             const distToCenter = Math.hypot(pt.x - obj.x, pt.y - obj.y);
-            
-            if (distToHandle < distToCenter) {
+            // Only rotate if very close to the handle dot
+            if (distToHandle < obj.size * 1.0 && distToHandle < distToCenter) {
                 state.dragAction = 'rotate';
                 const tipX = obj.x + Math.cos(obj.angle) * (obj.size / 2);
                 const tipY = obj.y + Math.sin(obj.angle) * (obj.size / 2);
@@ -1454,7 +1581,8 @@ svg.addEventListener('touchstart', e => {
             const hy = obj.y + handleDist * Math.sin(obj.angle);
             const distToHandle = Math.hypot(svgX - hx, svgY - hy);
             const distToCenter = Math.hypot(svgX - obj.x, svgY - obj.y);
-            if (distToHandle < Math.max(2, state.viewWidth * 0.12) && distToHandle < distToCenter) {
+            // Tight threshold — must be close to the handle dot specifically
+            if (distToHandle < obj.size * 1.0 && distToHandle < distToCenter) {
                 state.isDragging = true;
                 state.dragAction = 'rotate';
                 state.dragStartX = svgX;
@@ -1468,7 +1596,9 @@ svg.addEventListener('touchstart', e => {
             const hx = obj.x + obj.r;
             const hy = obj.y;
             const distToHandle = Math.hypot(svgX - hx, svgY - hy);
-            if (distToHandle < Math.max(1, state.viewWidth * 0.08)) {
+            const distToCenter = Math.hypot(svgX - obj.x, svgY - obj.y);
+            // Guard: only resize if closer to handle than to center (prevents vertex-tap from triggering resize)
+            if (distToHandle < Math.max(1, state.viewWidth * 0.08) && distToHandle < distToCenter) {
                 state.isDragging = true;
                 state.dragAction = 'resize';
                 state.dragStartX = svgX;
@@ -1479,7 +1609,9 @@ svg.addEventListener('touchstart', e => {
             const hx = obj.x + 1;
             const hy = obj.y - obj.a;
             const distToHandle = Math.hypot(svgX - hx, svgY - hy);
-            if (distToHandle < Math.max(1, state.viewWidth * 0.08)) {
+            const distToVertex = Math.hypot(svgX - obj.x, svgY - obj.y);
+            // Guard: only resize if closer to handle than to vertex
+            if (distToHandle < Math.max(1, state.viewWidth * 0.08) && distToHandle < distToVertex) {
                 state.isDragging = true;
                 state.dragAction = 'resize-parabola';
                 state.dragStartX = svgX;
@@ -1547,6 +1679,10 @@ svg.addEventListener('touchmove', e => {
         touchResizeParabola(e.touches[0].clientX, e.touches[0].clientY);
         return;
     }
+    if (state.isDragging && state.dragAction === 'move') {
+        touchMoveObject(e.touches[0].clientX, e.touches[0].clientY);
+        return;
+    }
 
     // Single touch move - forward to mousemove logic
     const syntheticEvent = {
@@ -1575,11 +1711,12 @@ svg.addEventListener('touchend', e => {
 
     const wasRotating = state.dragAction === 'rotate';
     const wasResizing = state.dragAction === 'resize' || state.dragAction === 'resize-parabola';
+    const wasMoving = state.dragAction === 'move';
     state.isDragging = false;
     state.dragAction = null;
     state.rotatePivot = null;
-    // Full rebuild after rotation/resize ends to restore proper UI with touch listeners
-    if (wasRotating || wasResizing) renderObjects();
+    // Full rebuild after interaction ends to restore proper UI with touch listeners
+    if (wasRotating || wasResizing || wasMoving) renderObjects();
 }, { passive: false });
 
 svg.addEventListener('touchcancel', () => {
@@ -1604,6 +1741,9 @@ document.addEventListener('touchmove', e => {
     } else if (state.dragAction === 'resize-parabola') {
         e.preventDefault();
         touchResizeParabola(e.touches[0].clientX, e.touches[0].clientY);
+    } else if (state.dragAction === 'move') {
+        e.preventDefault();
+        touchMoveObject(e.touches[0].clientX, e.touches[0].clientY);
     }
 }, { passive: false });
 
@@ -1611,10 +1751,11 @@ document.addEventListener('touchend', e => {
     if (!state.isDragging) return;
     const wasRotating = state.dragAction === 'rotate';
     const wasResizing = state.dragAction === 'resize' || state.dragAction === 'resize-parabola';
+    const wasMoving = state.dragAction === 'move';
     state.isDragging = false;
     state.dragAction = null;
     state.rotatePivot = null;
-    if (wasRotating || wasResizing) renderObjects();
+    if (wasRotating || wasResizing || wasMoving) renderObjects();
 }, { passive: false });
 
 // UI Event Listeners

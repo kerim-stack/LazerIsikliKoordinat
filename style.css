@@ -238,6 +238,8 @@ svg {
 
 .handle-hit-area {
     touch-action: none;
+    /* r is set in SVG units; on coarse/touch screens we visually expand via filter
+       but keep the SVG r tight so it doesn't cover the laser body */
 }
 
 .handle:active {
